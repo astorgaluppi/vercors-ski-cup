@@ -25,6 +25,6 @@ window.PISTE_V1 = {
   champsDeBosses: [
     // ecartRangs / ecartBosses : distance entre deux rangées et entre deux bosses d'une rangée (m)
     { debut: 200,  longueur: 50,  ecartRangs: 8,   ecartBosses: 7.5 },  // premier champ, plus facile
-    { debut: 1000, longueur: 50,  ecartRangs: 5.5, ecartBosses: 5.2 }
+    { debut: 1000, longueur: 50,  ecartRangs: 8,   ecartBosses: 7.5 }
   ]
 };
