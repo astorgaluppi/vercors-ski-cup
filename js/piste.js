@@ -8,11 +8,11 @@ window.PISTE_V1 = {
   largeur: 24,             // largeur du couloir (environ 70 % de l'écran)
   intermediaires: [500, 1000],
   troncons: [
-    { longueur: 300, angle: 0 },     // départ + 1er champ de bosses (200 m)
+    { longueur: 370, angle: 0 },     // départ + 1er champ de bosses (300 m)
     { longueur: 70,  angle: 25 },
     { longueur: 50,  angle: 0 },
     { longueur: 70,  angle: -25 },
-    { longueur: 210, angle: 0 },     // intermédiaire 1 (500 m)
+    { longueur: 140, angle: 0 },     // intermédiaire 1 (500 m)
     { longueur: 100, angle: 30 },
     { longueur: 80,  angle: 0 },
     { longueur: 80,  angle: -30 },
@@ -24,7 +24,7 @@ window.PISTE_V1 = {
   ],
   champsDeBosses: [
     // ecartRangs / ecartBosses : distance entre deux rangées et entre deux bosses d'une rangée (m)
-    { debut: 200,  longueur: 50,  ecartRangs: 8,   ecartBosses: 7.5 },  // premier champ, plus facile
+    { debut: 300,  longueur: 50,  ecartRangs: 8,   ecartBosses: 7.5 },  // premier champ, plus facile
     { debut: 1000, longueur: 50,  ecartRangs: 8,   ecartBosses: 7.5 }
   ]
 };
