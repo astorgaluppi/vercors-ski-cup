@@ -817,10 +817,6 @@
     if (yBot > STOP.y - STOP.r - 2) {
       ctx.fillStyle = '#f6f9fd';
       ctx.beginPath(); ctx.arc(wx(STOP.x), wy(STOP.y), STOP.r * SCALE, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = 'rgba(160,185,215,0.5)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(wx(STOP.x), wy(STOP.y), (STOP.r - 0.5) * SCALE, 0, Math.PI * 2); ctx.stroke();
-      ctx.strokeStyle = 'rgba(200,215,235,0.7)';
-      for (let r = 4; r < STOP.r; r += 4) { ctx.beginPath(); ctx.arc(wx(STOP.x), wy(STOP.y), r * SCALE, 0, Math.PI * 2); ctx.stroke(); }
     }
 
     // lignes au sol
