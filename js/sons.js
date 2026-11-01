@@ -1,6 +1,6 @@
 // Pas Très Pentu Ski Cup — bruitages (V2)
 // Tous les sons sont fabriqués par le jeu avec Web Audio : aucun fichier à télécharger (0 Ko).
-// Glisse et carres suivent la vitesse et les virages ; cloches et foule sont jouées en fond.
+// La glisse suit la vitesse et devient plus forte dans les virages et en chasse-neige ; cloches et foule sont jouées en fond.
 window.Sons = (() => {
   'use strict';
 
@@ -9,7 +9,7 @@ window.Sons = (() => {
   try { muted = localStorage.getItem(KEY) === '1'; } catch (e) { /* stockage indisponible */ }
 
   let ac = null, master = null, noise = null;
-  let glide = null, edge = null, crowd = null;
+  let glide = null, crowd = null;
   let bellTimer = 0, cheer = null, reverseTimer = 0;
   let clapBuses = [];
   const listeners = [];
@@ -86,19 +86,6 @@ window.Sons = (() => {
       src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(master);
       src.start();
       glide = { lp, g };
-    }
-    // Carres : crissement aigu, granuleux
-    {
-      const src = noiseSource();
-      const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 3000; bp.Q.value = 2.5;
-      const grit = ac.createGain(); grit.gain.value = 0.6;
-      const lfo = ac.createOscillator(); lfo.frequency.value = 23; lfo.type = 'triangle';
-      const lfoAmt = ac.createGain(); lfoAmt.gain.value = 0.4;
-      lfo.connect(lfoAmt); lfoAmt.connect(grit.gain);
-      const g = ac.createGain(); g.gain.value = 0;
-      src.connect(bp); bp.connect(grit); grit.connect(g); g.connect(master);
-      src.start(); lfo.start();
-      edge = { bp, g, lfo };
     }
     // Foule : murmure fait de bruits filtrés aux fréquences de la voix, qui ondulent lentement
     {
@@ -248,7 +235,7 @@ window.Sons = (() => {
     countdown(n) { beep(n === 0); },
     start() {
       if (!ac) return;
-      ramp(crowd.g.gain, 0.05, 0.6);
+      ramp(crowd.g.gain, 0, 0.3); // pas de murmure de foule pendant la descente
     },
     fall(reason) {
       if (!ac) return;
@@ -268,15 +255,15 @@ window.Sons = (() => {
       }
       // « Oh ! » de la foule
       crowdVoice(t + 0.12, 'o', 1.1, 0.16, true);
-      ramp(glide.g.gain, 0, 0.05); ramp(edge.g.gain, 0, 0.05);
-      ramp(crowd.g.gain, 0.02, 1.5);
+      ramp(glide.g.gain, 0, 0.05);
+      ramp(crowd.g.gain, 0, 1.5);
     },
     finish() {
       if (!ac) return;
       const t = ac.currentTime;
       // ovation : gros brouhaha, applaudissements nourris et cloches à toute volée
       ramp(crowd.g.gain, 0.5, 0.15);
-      setTimeout(() => { if (ac && crowd) ramp(crowd.g.gain, 0.12, 2); }, 6000);
+      setTimeout(() => { if (ac && crowd) ramp(crowd.g.gain, 0, 1.5); }, 6000);
       crowdVoice(t + 0.05, 'a', 2.2, 0.3, false);
       crowdVoice(t + 1.8, 'a', 2.0, 0.22, false);
       crowdVoice(t + 3.6, 'a', 2.0, 0.16, false);
@@ -286,13 +273,13 @@ window.Sons = (() => {
     },
     timeout() {
       if (!ac) return;
-      ramp(crowd.g.gain, 0.02, 1);
-      ramp(glide.g.gain, 0, 0.3); ramp(edge.g.gain, 0, 0.3);
+      ramp(crowd.g.gain, 0, 1);
+      ramp(glide.g.gain, 0, 0.3);
       crowdVoice(ac.currentTime + 0.05, 'o', 1.2, 0.1, true);
     },
     stop() {
       if (!ac) return;
-      ramp(crowd.g.gain, 0, 0.4); ramp(glide.g.gain, 0, 0.1); ramp(edge.g.gain, 0, 0.1);
+      ramp(crowd.g.gain, 0, 0.4); ramp(glide.g.gain, 0, 0.1);
       cheer = null;
     }
   };
@@ -303,11 +290,10 @@ window.Sons = (() => {
     const moving = st.moving && st.v > 0.3;
     const v = st.v;
     const sp = Math.min(1, v / 25);
-    ramp(glide.g.gain, moving ? 0.05 + sp * sp * 0.3 + (st.heavy ? 0.05 : 0) : 0, 0.1);
-    ramp(glide.lp.frequency, (st.heavy ? 260 : 380) + sp * 2600, 0.1);
-    const carve = moving ? Math.min(1, st.turn * Math.min(1, v / 10) + (st.brake ? 0.75 : 0) + (st.skid ? 0.9 : 0)) : 0;
-    ramp(edge.g.gain, carve * (0.05 + sp * 0.1), 0.06);
-    ramp(edge.bp.frequency, (st.heavy ? 1800 : 2600) + sp * 1800 + (st.brake ? 600 : 0), 0.1);
+    // Virages et chasse-neige : même souffle que la glisse, en plus fort (les skis raclent la neige)
+    const carve = moving ? Math.min(1, st.turn * Math.min(1, v / 10) + (st.brake ? 0.8 : 0) + (st.skid ? 1 : 0)) : 0;
+    ramp(glide.g.gain, moving ? 0.05 + sp * sp * 0.3 + (st.heavy ? 0.05 : 0) + carve * (0.18 + sp * 0.2) : 0, 0.08);
+    ramp(glide.lp.frequency, (st.heavy ? 260 : 380) + sp * 2600 + carve * 700, 0.08);
 
     // bip bip de recul des chasse-neige à l'écran
     if (st.reverse > 0) {
@@ -315,8 +301,6 @@ window.Sons = (() => {
       if (reverseTimer <= 0) { reverseBeep(0.03 + st.reverse * 0.06); reverseTimer = 1.0; }
     } else reverseTimer = 0;
 
-    // pendant la course : pas de cloches, seulement la foule qui se rapproche
-    if (st.ambient && !cheer) ramp(crowd.g.gain, 0.04 + st.progress * st.progress * 0.08, 0.8);
     // ovation à l'arrivée : applaudissements et cloches, qui diminuent doucement
     if (cheer) {
       const now = ac.currentTime;
