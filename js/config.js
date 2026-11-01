@@ -4,6 +4,6 @@
 // et seulement avec le bon code famille. Ne jamais mettre ici la clé « secret » ni « service_role ».
 // Laisser vide pour jouer sans classement.
 window.PTPSC_CONFIG = {
-  supabaseUrl: '',
-  supabaseKey: ''
+  supabaseUrl: 'https://fjbgfeejmdshajdohoxl.supabase.co',
+  supabaseKey: 'sb_publishable_0FhkRoAcSda6OyeWuQuSQg__9unydyF'
 };
