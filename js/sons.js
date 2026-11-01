@@ -11,6 +11,7 @@ window.Sons = (() => {
   let ac = null, master = null, noise = null;
   let glide = null, edge = null, crowd = null;
   let bellTimer = 0, cheer = null, reverseTimer = 0;
+  let clapBuses = [];
   const listeners = [];
 
   function supported() { return !!(window.AudioContext || window.webkitAudioContext); }
@@ -18,7 +19,10 @@ window.Sons = (() => {
   // À appeler depuis un appui (bouton « Jouer ») : obligatoire sur iPhone.
   function unlock() {
     if (!supported()) return;
+    // Un contexte audio fermé par le système ne repart jamais : on en refait un neuf
+    if (ac && ac.state === 'closed') ac = null;
     if (!ac) {
+      clapBuses = [];
       try {
         // Respecte le mode silencieux de l'iPhone quand le navigateur le permet
         if (navigator.audioSession) navigator.audioSession.type = 'ambient';
@@ -32,11 +36,25 @@ window.Sons = (() => {
       noise = makeNoise(2);
       buildLoops();
     }
-    if (ac.state === 'suspended') ac.resume();
+    wake();
     // petit son vide pour débloquer la sortie audio d'iOS
     const b = ac.createBuffer(1, 1, 22050), s = ac.createBufferSource();
     s.buffer = b; s.connect(master); s.start(0);
   }
+
+  // Relance le son s'il a été mis en pause par le navigateur. Sur iPhone, l'état peut être
+  // « suspended » mais aussi « interrupted » (clavier, appel, autre appli, écran verrouillé…).
+  function wake() {
+    if (!ac || ac.state === 'running' || ac.state === 'closed') return;
+    const p = ac.resume();
+    if (p && p.catch) p.catch(() => {});
+  }
+  // Chaque appui ou touche est une occasion de relancer le son
+  for (const ev of ['touchend', 'pointerup', 'click', 'keydown']) {
+    document.addEventListener(ev, wake, { capture: true, passive: true });
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
+  window.addEventListener('pageshow', wake);
 
   function makeNoise(seconds) {
     const n = Math.floor(ac.sampleRate * seconds);
@@ -101,7 +119,14 @@ window.Sons = (() => {
     }
   }
 
-  const ramp = (param, value, tc = 0.08) => param.setTargetAtTime(value, ac.currentTime, tc);
+  // Change un réglage en douceur. On n'envoie un nouvel ordre que si la valeur change vraiment :
+  // des milliers d'ordres par minute peuvent bloquer le son sur certains téléphones.
+  const ramp = (param, value, tc = 0.08) => {
+    const last = param.__target;
+    if (last !== undefined && Math.abs(value - last) <= Math.max(1e-4, Math.abs(last) * 0.03) && param.__tc === tc) return;
+    param.__target = value; param.__tc = tc;
+    param.setTargetAtTime(value, ac.currentTime, tc);
+  };
 
   // ---------- Sons ponctuels ----------
   function env(g, t, a, peak, d) {
@@ -167,12 +192,20 @@ window.Sons = (() => {
     for (let i = 0; i < n; i++) { cowbell(t, pitch, pan, vol * (1 - i * 0.2)); t += 0.18 + Math.random() * 0.25; }
   }
 
+  // Applaudissement : un petit claquement de bruit envoyé vers l'un de 6 « coins » du public déjà
+  // préparés (filtre + position), pour ne créer que deux éléments audio par claquement.
   function clap(when, pan, vol) {
+    if (!clapBuses.length) {
+      for (let i = 0; i < 6; i++) {
+        const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1100 + i * 220; bp.Q.value = 1.2;
+        const p = panner(-0.9 + i * 0.36);
+        bp.connect(p); p.connect(master);
+        clapBuses.push(bp);
+      }
+    }
     const s = ac.createBufferSource(); s.buffer = noise;
-    const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1200 + Math.random() * 900; bp.Q.value = 1.2;
     const g = ac.createGain(); env(g, when, 0.002, vol, 0.07);
-    const p = panner(pan);
-    s.connect(bp); bp.connect(g); g.connect(p); p.connect(master);
+    s.connect(g); g.connect(clapBuses[Math.min(5, Math.max(0, Math.round((pan + 0.9) / 0.36)))]);
     s.start(when, Math.random()); s.stop(when + 0.1);
   }
 
