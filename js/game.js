@@ -1,4 +1,4 @@
-// Pas Très Pentu Ski Cup — V1
+// Pas Très Pentu Ski Cup — V2
 // Jeu 2D en Canvas, sans dépendance. Le skieur est en haut de l'écran,
 // la piste défile vers le haut et les obstacles arrivent par le bas.
 (() => {
@@ -31,7 +31,14 @@
     startY: -9, gateY: -6.5,
     stopRadius: 24, stopOffset: 32,
     skidDec: 45 * KMH,
-    bannerTime: 2, bannerCooldown: 5, splitShowTime: 3
+    bannerTime: 2, bannerCooldown: 5, splitShowTime: 3,
+    // V2 : chasse-neige garés (taille en m, angle de biais)
+    plowW: 3.4, plowL: 6.8, plowAngle: 28 * DEG, plowMargin: 0.3,
+    // V2 : « La soupe et les cailloux » (neige lourde + plaques de terre)
+    heavyGripMul: 0.65,        // adhérence réduite : virages plus larges
+    heavySpeedMul: 0.85,       // vitesses maximales réduites de 15 %
+    heavyDec: 6 * KMH,         // freinage naturel jusqu'à la nouvelle vitesse maximale
+    mudHitMul: 0.82            // zone de chute un peu plus petite que la plaque dessinée
   };
 
   const P = window.PISTE_V1;
@@ -138,6 +145,34 @@
     }
     bumps.sort((a, b) => a.y - b.y);
   })();
+
+  // V2 : chasse-neige garés de biais, en chicane
+  const plows = (P.chasseNeige || []).map((e) => {
+    const c = TRACK.center(e.y), hw = TRACK.halfW(e.y);
+    const phi = -e.cote * CFG.plowAngle; // l'avant (la lame) pointe vers le milieu de la piste, vers le bas
+    const ext = (CFG.plowW / 2) * Math.cos(phi) + (CFG.plowL / 2) * Math.abs(Math.sin(phi));
+    return { x: c + e.cote * (hw - ext - 0.2), y: e.y, phi };
+  });
+
+  // V2 : neige lourde et plaques de terre
+  const HEAVY = P.neigeLourde || null;
+  const inHeavy = (y) => !!HEAVY && y >= HEAVY.debut && y <= HEAVY.fin;
+  const muds = (P.plaquesDeTerre || []).map((m, i) => {
+    const c = TRACK.center(m.y), hw = TRACK.halfW(m.y);
+    const rx = m.r * 1.25, ry = m.r * 0.8, k = 7000 + i * 50;
+    const pts = [];
+    const n = 16;
+    for (let j = 0; j < n; j++) {
+      const a = j / n * Math.PI * 2, f = 0.82 + hash(k + j) * 0.32;
+      pts.push([Math.cos(a) * rx * f, Math.sin(a) * ry * f]);
+    }
+    const stones = [];
+    for (let j = 0; j < 7; j++) {
+      const a = hash(k + 20 + j) * Math.PI * 2, d = Math.sqrt(hash(k + 30 + j)) * 0.75;
+      stones.push({ x: Math.cos(a) * rx * d, y: Math.sin(a) * ry * d, r: 0.12 + hash(k + 40 + j) * 0.22, g: j % 3 });
+    }
+    return { x: c + m.x * hw, y: m.y, rx, ry, pts, stones };
+  }).sort((a, b) => a.y - b.y);
 
   // Public et barrières de l'aire d'arrêt
   const crowd = [], barriers = [];
@@ -488,6 +523,10 @@
     KeyA: 'L', KeyQ: 'L', KeyD: 'R', KeyW: 'U', KeyZ: 'U', KeyS: 'D'
   };
   window.addEventListener('keydown', (e) => {
+    if (e.target && e.target.tagName === 'INPUT') {
+      if (e.code === 'Enter') { const btn = document.querySelector('.screen.visible .btn-primary'); if (btn) { e.preventDefault(); btn.click(); } }
+      return;
+    }
     const k = KEYMAP[e.code];
     if (k) { input.keys.add(k); e.preventDefault(); }
     if ((e.code === 'Enter' || e.code === 'Space') && !e.repeat) {
@@ -553,8 +592,11 @@
       gateOpen: 0, announced: {}, fallReason: ''
     });
     S.camX = S.x; S.camY = S.y - viewH() * CFG.skierScreenFrac;
+    S.lastBeep = null; S.heavy = false; S.turnAmt = 0;
+    S.ref = window.Famille ? Famille.reference() : null; // record de la famille au départ
     input.keys.clear(); input.touch = null;
     showScreen(null);
+    if (window.Sons) { Sons.unlock(); Sons.on.start(); }
   }
 
   const viewH = () => H / SCALE;
@@ -571,8 +613,10 @@
     S.mode = 'fallen';
     S.fallT = 0;
     S.fallReason = reason;
-    S.v *= reason === 'arbre' ? 0.15 : 0.5;
+    S.v *= reason === 'arbre' || reason === 'engin' ? 0.15 : 0.5;
     puff(S.x, S.y, 26, 6);
+    if (window.Sons) Sons.on.fall(reason);
+    if (window.Famille) Famille.onRunEnd({ finished: false });
   }
 
   function puff(x, y, n, spd) {
@@ -597,6 +641,12 @@
     S.t += dt;
     readInput();
 
+    if (S.mode === 'countdown' || (S.mode === 'race' && S.countdown > 0)) {
+      const cd = S.countdown - (S.mode === 'countdown' ? dt : 0);
+      const n = cd > 2.6 ? 3 : cd > 1.6 ? 2 : cd > 0.6 ? 1 : 0;
+      if (n !== S.lastBeep) { S.lastBeep = n; if (window.Sons) Sons.on.countdown(n); }
+    }
+    if (S.mode === 'countdown' && !S.ref && window.Famille) S.ref = Famille.reference(); // classement arrivé pendant le compte à rebours
     if (S.mode === 'countdown') {
       S.countdown -= dt;
       if (S.countdown <= 0.6 && S.gateOpen === 0) S.gateOpen = 0.001;
@@ -642,27 +692,38 @@
         showBanner('Champ de bosses !');
       }
     }
+    if (HEAVY && !S.announced.heavy && bottom >= HEAVY.debut - 1 && S.y < HEAVY.fin && (S.mode === 'race' || S.mode === 'countdown')) {
+      S.announced.heavy = true;
+      showBanner('La soupe et les cailloux !');
+    }
   }
 
   function raceStep(dt) {
     const prevY = S.y;
     // virage : vitesse de rotation = a / v (rayon R = v² / a)
-    const grip = CFG.grip * (input.brake ? CFG.brakeGripMul : 1);
+    const heavy = inHeavy(S.y);
+    S.heavy = heavy;
+    const grip = CFG.grip * (input.brake ? CFG.brakeGripMul : 1) * (heavy ? CFG.heavyGripMul : 1);
     const target = input.steer * CFG.maxAngle;
     const omega = Math.min(CFG.maxTurnRate, grip / Math.max(S.v, 0.5));
     const d = target - S.th;
     S.th += Math.sign(d) * Math.min(Math.abs(d), omega * dt);
+    S.turnAmt = Math.min(1, Math.abs(d) / 0.5);
 
-    // vitesse
+    // vitesse (en neige lourde, les vitesses maximales baissent)
     const cos = Math.cos(S.th);
+    const hv = heavy ? CFG.heavySpeedMul : 1;
     if (input.brake) {
       if (S.v > CFG.brakeMin) S.v = Math.max(CFG.brakeMin, S.v - CFG.brakeDec * dt);
       else S.v = Math.min(CFG.brakeMin, S.v + CFG.slopeAcc * cos * dt);
     } else if (input.tuck) {
-      if (S.v < CFG.schussMax) S.v = Math.min(CFG.schussMax, S.v + CFG.schussAcc * cos * dt);
+      const cap = CFG.schussMax * hv;
+      if (S.v < cap) S.v = Math.min(cap, S.v + CFG.schussAcc * cos * dt);
+      else S.v = Math.max(cap, S.v - CFG.heavyDec * dt);
     } else {
-      if (S.v < CFG.slopeMax) S.v = Math.min(CFG.slopeMax, S.v + CFG.slopeAcc * cos * dt);
-      else S.v = Math.max(CFG.slopeMax, S.v - CFG.overDec * dt);
+      const cap = CFG.slopeMax * hv;
+      if (S.v < cap) S.v = Math.min(cap, S.v + CFG.slopeAcc * cos * dt);
+      else S.v = Math.max(cap, S.v - (heavy ? CFG.heavyDec : CFG.overDec) * dt);
     }
 
     S.y += S.v * Math.cos(S.th) * dt;
@@ -687,6 +748,8 @@
       S.clock = CFG.timeLimit;
       S.mode = 'timeout';
       showScreen('timeout');
+      if (window.Sons) Sons.on.timeout();
+      if (window.Famille) Famille.onRunEnd({ finished: false });
       return;
     }
 
@@ -700,12 +763,31 @@
       const yCurve = FINISH + 13, v1 = Math.min(S.v, 45 * KMH);
       S.skidSide = side;
       S.fin = { side, curving: false, yCurve, v1, dec1: Math.max(0, (S.v * S.v - v1 * v1) / (2 * (yCurve - FINISH))), D: 22, s: 0, stopped: false };
+      S.heavy = false;
+      if (window.Sons) Sons.on.finish();
+      if (window.Famille) Famille.onRunEnd({ finished: true, time: S.finalTime, splits: S.splits.slice() });
       return;
     }
 
     // sapins du bord
     const c = TRACK.center(S.y), hw = TRACK.halfW(S.y);
     if (Math.abs(S.x - c) > hw - CFG.edgeMargin && S.y > CFG.startY + 1) { fall('arbre'); return; }
+
+    // chasse-neige garés
+    for (const e of plows) {
+      if (Math.abs(S.y - e.y) > CFG.plowL) continue;
+      const dx = S.x - e.x, dy = S.y - e.y;
+      const along = dx * Math.sin(e.phi) + dy * Math.cos(e.phi);
+      const across = dx * Math.cos(e.phi) - dy * Math.sin(e.phi);
+      if (Math.abs(across) < CFG.plowW / 2 + CFG.plowMargin && Math.abs(along) < CFG.plowL / 2 + CFG.plowMargin) { fall('engin'); return; }
+    }
+
+    // plaques de terre : chute à n'importe quelle vitesse
+    for (let i = lowerBound(muds, S.y - 4); i < muds.length && muds[i].y < S.y + 4; i++) {
+      const m = muds[i];
+      const qx = (S.x - m.x) / (m.rx * CFG.mudHitMul), qy = (S.y - m.y) / (m.ry * CFG.mudHitMul);
+      if (qx * qx + qy * qy < 1) { fall('terre'); return; }
+    }
 
     // bosses
     if (S.lift > 0) S.lift = Math.max(0, S.lift - dt * 40);
@@ -813,6 +895,33 @@
       ctx.stroke();
     }
 
+    // neige lourde, un peu plus jaune (neige sale)
+    if (HEAVY && yBot > HEAVY.debut - 10 && yTop < HEAVY.fin) {
+      const y0 = Math.max(yTop, HEAVY.debut - 8), y1 = Math.min(yEnd, HEAVY.fin);
+      if (y1 > y0) {
+        const grd = ctx.createLinearGradient(0, wy(HEAVY.debut - 8), 0, wy(HEAVY.debut));
+        grd.addColorStop(0, 'rgba(232,214,160,0)');
+        grd.addColorStop(1, 'rgba(232,212,150,0.38)');
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        for (let y = y0; y <= y1; y += 1) ctx.lineTo(wx(TRACK.center(y) - TRACK.halfW(y)), wy(y));
+        ctx.lineTo(wx(TRACK.center(y1) - TRACK.halfW(y1)), wy(y1));
+        ctx.lineTo(wx(TRACK.center(y1) + TRACK.halfW(y1)), wy(y1));
+        for (let y = y1; y >= y0; y -= 1) ctx.lineTo(wx(TRACK.center(y) + TRACK.halfW(y)), wy(y));
+        ctx.closePath(); ctx.fill();
+        // petites taches de neige sale
+        ctx.fillStyle = 'rgba(170,140,90,0.16)';
+        for (let yy = Math.floor(y0 / 2) * 2; yy < y1; yy += 2) {
+          for (let j = 0; j < 3; j++) {
+            const h1 = hash(yy * 7.3 + j * 1.9);
+            if (yy < HEAVY.debut) continue;
+            const x = TRACK.center(yy) + (h1 - 0.5) * 2 * TRACK.halfW(yy) * 0.95;
+            ctx.beginPath(); ctx.ellipse(wx(x), wy(yy + hash(yy + j) * 2), 2 + h1 * 5, 1 + h1, 0, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+      }
+    }
+
     // aire d'arrêt
     if (yBot > STOP.y - STOP.r - 2) {
       ctx.fillStyle = '#f6f9fd';
@@ -843,6 +952,9 @@
       ctx.drawImage(sp.c, wx(b.x) - sp.w * k / 2, wy(b.y) - sp.h * k / 2, sp.w * k, sp.h * k);
     }
 
+    // plaques de terre (au sol)
+    for (let i = lowerBound(muds, yTop - 4); i < muds.length && muds[i].y < yBot + 4; i++) drawMud(muds[i]);
+
     // objets debout, triés par y
     const items = [];
     for (let i = lowerBound(trees, yTop); i < trees.length && trees[i].y < yBot + 5; i++) {
@@ -865,6 +977,7 @@
       for (const b of barriers) items.push({ y: b.y, draw: () => drawBarrier(b) });
       for (const p of crowd) items.push({ y: p.y, draw: () => drawPerson(p) });
     }
+    for (const e of plows) if (e.y > yTop - 6 && e.y < yBot + 6) items.push({ y: e.y, draw: () => drawPlow(e) });
     items.push({ y: S.y, draw: drawPlayer });
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
@@ -894,6 +1007,104 @@
     } else {
       ctx.fillStyle = color;
       ctx.fillRect(x0, sy - 0.25 * SCALE, x1 - x0, 0.5 * SCALE);
+    }
+  }
+
+  // Chasse-neige vu de dessus : chenilles, carrosserie orange, cabine, lame à l'avant
+  function drawPlow(e) {
+    const s = SCALE;
+    ctx.save();
+    ctx.translate(wx(e.x), wy(e.y));
+    ctx.rotate(-e.phi);
+    // ombre
+    ctx.fillStyle = 'rgba(60,90,140,0.25)';
+    roundRect(ctx, -1.6 * s + 0.35 * s, -3.2 * s + 0.35 * s, 3.2 * s, 6.6 * s, 0.4 * s); ctx.fill();
+    // chenilles
+    ctx.fillStyle = '#2b2f36';
+    roundRect(ctx, -1.7 * s, -3.0 * s, 0.75 * s, 4.9 * s, 0.3 * s); ctx.fill();
+    roundRect(ctx, 0.95 * s, -3.0 * s, 0.75 * s, 4.9 * s, 0.3 * s); ctx.fill();
+    ctx.fillStyle = '#4a5160';
+    for (let y = -2.8; y < 1.8; y += 0.45) {
+      ctx.fillRect(-1.65 * s, y * s, 0.65 * s, 0.12 * s);
+      ctx.fillRect(1.0 * s, y * s, 0.65 * s, 0.12 * s);
+    }
+    // carrosserie
+    ctx.fillStyle = '#16202e';
+    roundRect(ctx, -1.15 * s, -3.25 * s, 2.3 * s, 5.0 * s, 0.35 * s); ctx.fill();
+    ctx.fillStyle = '#f57c00';
+    roundRect(ctx, -1.05 * s, -3.15 * s, 2.1 * s, 4.8 * s, 0.3 * s); ctx.fill();
+    ctx.fillStyle = '#ff9800';
+    roundRect(ctx, -0.9 * s, -3.0 * s, 0.6 * s, 4.4 * s, 0.25 * s); ctx.fill();
+    // grille du moteur à l'arrière
+    ctx.fillStyle = '#bf5f00';
+    for (let i = 0; i < 4; i++) ctx.fillRect(-0.7 * s, (-2.9 + i * 0.28) * s, 1.4 * s, 0.12 * s);
+    // cabine (toit) et pare-brise vers l'avant
+    ctx.fillStyle = '#16202e';
+    roundRect(ctx, -1.0 * s, -0.6 * s, 2.0 * s, 2.1 * s, 0.3 * s); ctx.fill();
+    ctx.fillStyle = '#e65100';
+    roundRect(ctx, -0.9 * s, -0.5 * s, 1.8 * s, 1.6 * s, 0.25 * s); ctx.fill();
+    ctx.fillStyle = '#9fd3f5';
+    roundRect(ctx, -0.85 * s, 1.0 * s, 1.7 * s, 0.4 * s, 0.12 * s); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillRect(-0.6 * s, 1.08 * s, 0.5 * s, 0.1 * s);
+    // gyrophare qui clignote
+    const on = Math.floor(S.t * 3) % 2 === 0;
+    ctx.fillStyle = on ? '#ffeb3b' : '#ffa000';
+    ctx.beginPath(); ctx.arc(0, 0.2 * s, 0.28 * s, 0, Math.PI * 2); ctx.fill();
+    if (on) {
+      ctx.fillStyle = 'rgba(255,235,59,0.25)';
+      ctx.beginPath(); ctx.arc(0, 0.2 * s, 0.75 * s, 0, Math.PI * 2); ctx.fill();
+    }
+    // bras et lame
+    ctx.strokeStyle = '#37474f'; ctx.lineWidth = 0.18 * s;
+    ctx.beginPath(); ctx.moveTo(-0.7 * s, 1.7 * s); ctx.lineTo(-0.9 * s, 2.5 * s); ctx.moveTo(0.7 * s, 1.7 * s); ctx.lineTo(0.9 * s, 2.5 * s); ctx.stroke();
+    // tas de neige poussé par la lame
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.ellipse(0, 3.15 * s, 1.75 * s, 0.45 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#16202e';
+    ctx.beginPath();
+    ctx.moveTo(-1.85 * s, 2.45 * s); ctx.quadraticCurveTo(0, 2.95 * s, 1.85 * s, 2.45 * s);
+    ctx.lineTo(1.85 * s, 2.9 * s); ctx.quadraticCurveTo(0, 3.4 * s, -1.85 * s, 2.9 * s); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffca28';
+    ctx.beginPath();
+    ctx.moveTo(-1.75 * s, 2.52 * s); ctx.quadraticCurveTo(0, 3.0 * s, 1.75 * s, 2.52 * s);
+    ctx.lineTo(1.75 * s, 2.8 * s); ctx.quadraticCurveTo(0, 3.28 * s, -1.75 * s, 2.8 * s); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#16202e';
+    for (let i = -3; i <= 3; i += 2) ctx.fillRect(i * 0.45 * s - 0.1 * s, 2.62 * s + Math.abs(i) * -0.03 * s, 0.2 * s, 0.18 * s);
+    ctx.restore();
+  }
+
+  // Plaque de terre : terre brune, cailloux gris, quelques touffes d'herbe sèche
+  function drawMud(m) {
+    const x = wx(m.x), y = wy(m.y), s = SCALE;
+    const path = (k) => {
+      ctx.beginPath();
+      m.pts.forEach(([px, py], j) => { if (j) ctx.lineTo(x + px * s * k, y + py * s * k); else ctx.moveTo(x + px * s * k, y + py * s * k); });
+      ctx.closePath();
+    };
+    ctx.fillStyle = 'rgba(150,120,70,0.28)'; path(1.25); ctx.fill();
+    ctx.fillStyle = '#5d4128'; path(1); ctx.fill();
+    ctx.fillStyle = '#7a5a3a'; path(0.7); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.beginPath(); ctx.ellipse(x - m.rx * 0.55 * s, y - m.ry * 0.5 * s, 0.5 * s, 0.18 * s, -0.3, 0, Math.PI * 2); ctx.fill();
+    for (const st of m.stones) {
+      const sx = x + st.x * s, sy = y + st.y * s, r = st.r * s;
+      ctx.fillStyle = 'rgba(40,30,20,0.35)';
+      ctx.beginPath(); ctx.ellipse(sx + r * 0.25, sy + r * 0.3, r, r * 0.7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = ['#9e9e9e', '#8a8580', '#b0aca5'][st.g];
+      ctx.beginPath(); ctx.ellipse(sx, sy, r, r * 0.75, st.g, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.beginPath(); ctx.ellipse(sx - r * 0.3, sy - r * 0.25, r * 0.35, r * 0.2, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.strokeStyle = '#8a8a3a'; ctx.lineWidth = 1.5;
+    for (let j = 0; j < 3; j++) {
+      const [px, py] = m.pts[(j * 5 + 2) % m.pts.length];
+      const gx = x + px * s * 0.85, gy = y + py * s * 0.85;
+      ctx.beginPath();
+      ctx.moveTo(gx - 3, gy); ctx.lineTo(gx - 5, gy - 6);
+      ctx.moveTo(gx, gy); ctx.lineTo(gx, gy - 7);
+      ctx.moveTo(gx + 3, gy); ctx.lineTo(gx + 5, gy - 6);
+      ctx.stroke();
     }
   }
 
@@ -1067,17 +1278,28 @@
     ctx.fillText('m', W - 49, cy + 38);
 
     let lineY = cy + ch + 10;
-    // temps intermédiaire (3 s)
-    if (S.splitMsg && S.t - S.splitMsg.t0 < CFG.splitShowTime) {
-      const txt = `Inter ${S.splitMsg.i + 1} : ${fmt(S.splitMsg.t)}`;
+    const pill = (txt, bg, fg) => {
       ctx.font = `800 18px ${FONT}`;
       const w = ctx.measureText(txt).width + 28;
-      ctx.fillStyle = '#ffca28';
+      ctx.fillStyle = bg;
       roundRect(ctx, W / 2 - w / 2, lineY, w, 32, 16); ctx.fill();
-      ctx.fillStyle = '#1b2a44';
+      ctx.fillStyle = fg;
       ctx.fillText(txt, W / 2, lineY + 17);
       lineY += 40;
+    };
+    const gapPill = (g) => pill(window.Famille.fmtGap(g), g < 0 ? '#2e7d32' : '#c62828', '#ffffff');
+    // record de la famille, affiché au départ
+    if (S.ref && (S.mode === 'countdown' || (S.mode === 'race' && !S.started))) {
+      pill(`Record : ${S.ref.prenom} ${fmt(S.ref.ms / 1000)}`, 'rgba(255,255,255,0.92)', '#1b2a44');
     }
+    // temps intermédiaire (3 s), avec l'écart au record de la famille
+    if (S.splitMsg && S.t - S.splitMsg.t0 < CFG.splitShowTime) {
+      pill(`Inter ${S.splitMsg.i + 1} : ${fmt(S.splitMsg.t)}`, '#ffca28', '#1b2a44');
+      const rs = S.ref && (S.splitMsg.i ? S.ref.i2 : S.ref.i1);
+      if (rs) gapPill(S.splitMsg.t - rs / 1000);
+    }
+    // écart final à l'arrivée
+    if (S.ref && S.finalTime !== null && (S.mode === 'finishing' || S.mode === 'results')) gapPill(S.finalTime - S.ref.ms / 1000);
 
     // banderole d'obstacle
     if (S.banner) {
@@ -1138,7 +1360,8 @@
     home: document.getElementById('screen-home'),
     fall: document.getElementById('screen-fall'),
     timeout: document.getElementById('screen-timeout'),
-    results: document.getElementById('screen-results')
+    results: document.getElementById('screen-results'),
+    board: document.getElementById('screen-board')
   };
   function showScreen(name) {
     for (const [k, el] of Object.entries(screens)) el.classList.toggle('visible', k === name);
@@ -1149,9 +1372,25 @@
     document.getElementById('res-time').textContent = fmt(S.finalTime);
     document.getElementById('res-s1').textContent = fmt(S.splits[0]);
     document.getElementById('res-s2').textContent = fmt(S.splits[1]);
+    const ref = window.Famille && Famille.reference && S.ref;
+    ['res-g1', 'res-g2'].forEach((id, i) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const rs = ref && (i ? ref.i2 : ref.i1);
+      if (rs && S.splits[i] !== undefined) {
+        const g = S.splits[i] - rs / 1000;
+        el.textContent = Famille.fmtGap(g); el.className = 'gap ' + (g < 0 ? 'good' : 'bad');
+      } else { el.textContent = ''; el.className = 'gap'; }
+    });
+    if (window.Famille) Famille.fillResults();
     showScreen('results');
   }
-  document.querySelectorAll('[data-action="play"]').forEach((b) => b.addEventListener('click', resetRace));
+  function play() {
+    if (window.Famille && !Famille.canPlay()) return;
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    resetRace();
+  }
+  document.querySelectorAll('[data-action="play"]').forEach((b) => b.addEventListener('click', play));
   document.querySelectorAll('[data-action="home"]').forEach((b) => b.addEventListener('click', goHome));
 
   function goHome() {
@@ -1160,6 +1399,8 @@
     S.particles = []; S.trail = [];
     S.camX = S.x; S.camY = S.y - viewH() * CFG.skierScreenFrac;
     showScreen('home');
+    if (window.Sons) Sons.on.stop();
+    if (window.Famille) Famille.updateHome();
   }
 
   // Skieur de l'écran d'accueil
@@ -1187,16 +1428,29 @@
     } else {
       S.t += dt;
     }
+    if (window.Sons) {
+      const active = S.mode === 'race' || S.mode === 'finishing';
+      Sons.update(dt, {
+        moving: active, v: S.v,
+        turn: S.mode === 'race' ? (S.turnAmt || 0) : 0,
+        brake: S.mode === 'race' && input.brake,
+        skid: S.mode === 'finishing' && S.skidding,
+        heavy: S.mode === 'race' && S.heavy,
+        progress: Math.max(0, Math.min(1, S.y / FINISH)),
+        ambient: S.mode === 'race' || S.mode === 'countdown'
+      });
+    }
     render();
     requestAnimationFrame(frame);
   }
 
   window.addEventListener('resize', () => { resize(); drawHomeSkier(); });
   resize();
+  if (window.Famille) Famille.init();
   goHome();
   drawHomeSkier();
   requestAnimationFrame(frame);
 
   // Accès pour les tests automatiques et le dessin des icônes
-  window.PTPSC = { drawSkier, state: S, input, track: TRACK, bumps, cfg: CFG, step, fmt };
+  window.PTPSC = { drawSkier, state: S, input, track: TRACK, bumps, plows, muds, cfg: CFG, step, fmt, resetRace, goHome, showScreen };
 })();

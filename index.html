@@ -50,6 +50,42 @@
     .soon { font-size: 13px; color: #8193b0; margin: 0; }
     #rotate { display: none; position: fixed; inset: 0; background: var(--navy); color: #fff; z-index: 10; align-items: center; justify-content: center;
       text-align: center; font-size: 22px; font-weight: 800; padding: 30px; }
+    /* V2 : prénom, code famille, classement, bouton du son */
+    .player { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 280px; position: relative; }
+    .field { appearance: none; width: 100%; min-height: 48px; border-radius: 14px; border: 3px solid #fff; background: rgba(255,255,255,.92);
+      font: inherit; font-size: 20px; font-weight: 800; color: var(--navy); text-align: center; padding: 0 14px;
+      box-shadow: 0 3px 10px rgba(27,42,68,.15); -webkit-user-select: text; user-select: text; }
+    .field:focus { outline: none; border-color: var(--yellow); }
+    .field::placeholder { color: #8193b0; font-weight: 700; }
+    .shake { animation: shake .35s; border-color: var(--red); }
+    @keyframes shake { 25% { transform: translateX(-6px); } 50% { transform: translateX(6px); } 75% { transform: translateX(-3px); } }
+    .warn { min-height: 18px; margin: 0; font-size: 15px; font-weight: 800; color: var(--red); position: relative; }
+    .record { margin: 0; font-size: 17px; font-weight: 800; color: var(--navy); position: relative; min-height: 20px; }
+    .tiny { font-size: 13px; color: #5c6f8f; background: none; border: 0; font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; padding: 4px; }
+    #screen-home { gap: 12px; }
+    #screen-home .btn-link { position: relative; min-height: 40px; }
+    .gap { font-weight: 900; font-variant-numeric: tabular-nums; }
+    .gap.good { color: #2e7d32; } .gap.bad { color: #c62828; }
+    .big-gap { font-size: 26px; margin: -8px 0 0; min-height: 0; }
+    .splits { grid-template-columns: 1fr auto auto; }
+    .splits span:nth-child(even) { font-weight: 400; }
+    .splits span.t { font-weight: 800; font-variant-numeric: tabular-nums; }
+    .splits span.gap { font-weight: 900; font-size: 15px; min-width: 56px; text-align: right; }
+    .card { max-height: calc(100% - 20px); overflow-y: auto; }
+    #res-family { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+    .msg { font-size: 17px; font-weight: 800; margin: 0; color: var(--navy); }
+    .board { list-style: none; margin: 0; padding: 0; width: 100%; text-align: left; }
+    .board li { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 12px; font-size: 18px; }
+    .board li:nth-child(odd) { background: #f1f5fb; }
+    .board li.me { background: #fff3c4; }
+    .board .rk { font-weight: 900; color: var(--red); text-align: center; }
+    .board .nm { font-weight: 800; overflow: hidden; text-overflow: ellipsis; }
+    .board .nm small { display: block; font-size: 12px; font-weight: 600; color: #5c6f8f; }
+    .board .tm { font-weight: 900; font-variant-numeric: tabular-nums; }
+    #screen-board .card { max-width: 380px; }
+    #btn-son { position: absolute; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 6; width: 48px; height: 48px;
+      border-radius: 50%; border: 0; background: rgba(27,42,68,.75); color: #fff; font-size: 22px; line-height: 48px; padding: 0; cursor: pointer; }
+    @media (max-height: 640px) { #home-skier { height: 130px; width: 120px; } .title-main { font-size: 44px; } }
     @media (orientation: landscape) and (pointer: coarse) and (max-height: 500px) { #rotate { display: flex; } }
   </style>
 </head>
@@ -65,8 +101,18 @@
       </svg>
       <h1><span class="title-top">Pas Très Pentu</span><span class="title-main">Ski Cup</span></h1>
       <canvas id="home-skier" aria-hidden="true"></canvas>
+      <div class="player" id="home-player">
+        <input class="field" id="in-prenom" type="text" maxlength="20" placeholder="Ton prénom" autocomplete="given-name" autocapitalize="words" enterkeyhint="go" spellcheck="false">
+        <div id="home-code-row">
+          <input class="field" id="in-code" type="text" maxlength="30" placeholder="Code famille" autocomplete="off" autocapitalize="characters" enterkeyhint="go" spellcheck="false">
+        </div>
+        <p class="warn" id="home-warn"></p>
+      </div>
       <button class="btn btn-primary" data-action="play">Jouer</button>
+      <p class="record" id="home-record"></p>
+      <button class="btn btn-link" id="home-board-btn">🏆 Classement de la famille</button>
       <p class="hint">Pose ton pouce et glisse :<br><b>← →</b> tourner · <b>↓</b> schuss · <b>↑</b> chasse-neige<br>Évite les sapins, 1&nbsp;500&nbsp;m en moins de 2&nbsp;min&nbsp;!</p>
+      <button class="tiny" id="home-change-code" type="button">Changer de code famille</button>
     </section>
 
     <section id="screen-fall" class="screen dim">
@@ -91,19 +137,47 @@
       <div class="card">
         <p class="big-title">Arrivée !</p>
         <p class="big-time" id="res-time">0:00.0</p>
+        <p class="gap big-gap" id="res-gap"></p>
         <div class="splits">
-          <span>Intermédiaire 1 (500 m)</span><span id="res-s1">--</span>
-          <span>Intermédiaire 2 (1 000 m)</span><span id="res-s2">--</span>
+          <span>Inter 1 (500 m)</span><span class="t" id="res-s1">--</span><span class="gap" id="res-g1"></span>
+          <span>Inter 2 (1&nbsp;000 m)</span><span class="t" id="res-s2">--</span><span class="gap" id="res-g2"></span>
+        </div>
+        <div id="res-family">
+          <p class="msg" id="res-msg"></p>
+          <ol class="board" id="res-board"></ol>
         </div>
         <button class="btn btn-primary" data-action="play">Rejouer</button>
-        <p class="soon">Les records de la famille arrivent dans la prochaine version.</p>
+        <button class="btn btn-link" data-action="home">Accueil</button>
       </div>
     </section>
+
+    <section id="screen-board" class="screen dim">
+      <div class="card">
+        <p class="big-title">Classement</p>
+        <p class="sub" id="board-msg"></p>
+        <ol class="board" id="board-list"></ol>
+        <button class="btn btn-primary" data-action="play">Jouer</button>
+        <button class="btn btn-link" id="board-close">Accueil</button>
+      </div>
+    </section>
+
+    <button id="btn-son" type="button" aria-label="Couper le son">🔊</button>
   </div>
   <div id="rotate">Tourne ton téléphone en mode portrait 📱</div>
 
+  <script src="js/config.js"></script>
   <script src="js/piste.js"></script>
+  <script src="js/sons.js"></script>
+  <script src="js/famille.js"></script>
   <script src="js/game.js"></script>
+  <script>
+    (() => {
+      const b = document.getElementById('btn-son');
+      if (!window.Sons || !Sons.supported()) { b.style.display = 'none'; return; }
+      Sons.onChange((m) => { b.textContent = m ? '🔇' : '🔊'; b.setAttribute('aria-label', m ? 'Remettre le son' : 'Couper le son'); });
+      b.addEventListener('click', () => { Sons.unlock(); Sons.toggle(); b.blur(); });
+    })();
+  </script>
   <script>
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
       navigator.serviceWorker.register('sw.js').catch(() => {});
