@@ -85,6 +85,7 @@
     #screen-board .card { max-width: 380px; }
     #btn-son { position: absolute; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 6; width: 48px; height: 48px;
       border-radius: 50%; border: 0; background: rgba(27,42,68,.75); color: #fff; font-size: 22px; line-height: 48px; padding: 0; cursor: pointer; }
+    .version { position: absolute; left: 12px; bottom: calc(8px + env(safe-area-inset-bottom)); margin: 0; font-size: 12px; color: #8193b0; }
     @media (max-height: 640px) { #home-skier { height: 130px; width: 120px; } .title-main { font-size: 44px; } }
     @media (orientation: landscape) and (pointer: coarse) and (max-height: 500px) { #rotate { display: flex; } }
   </style>
@@ -113,6 +114,7 @@
       <button class="btn btn-link" id="home-board-btn">🏆 Classement de la famille</button>
       <p class="hint">Pose ton pouce et glisse :<br><b>← →</b> tourner · <b>↓</b> schuss · <b>↑</b> chasse-neige<br>Évite les sapins, 1&nbsp;500&nbsp;m en moins de 2&nbsp;min&nbsp;!</p>
       <button class="tiny" id="home-change-code" type="button">Changer de code famille</button>
+      <p class="version">version 2.4</p>
     </section>
 
     <section id="screen-fall" class="screen dim">
@@ -165,11 +167,11 @@
   </div>
   <div id="rotate">Tourne ton téléphone en mode portrait 📱</div>
 
-  <script src="js/config.js"></script>
-  <script src="js/piste.js"></script>
-  <script src="js/sons.js"></script>
-  <script src="js/famille.js"></script>
-  <script src="js/game.js"></script>
+  <script src="js/config.js?v=2.4"></script>
+  <script src="js/piste.js?v=2.4"></script>
+  <script src="js/sons.js?v=2.4"></script>
+  <script src="js/famille.js?v=2.4"></script>
+  <script src="js/game.js?v=2.4"></script>
   <script>
     (() => {
       const b = document.getElementById('btn-son');

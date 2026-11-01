@@ -708,8 +708,10 @@
     const target = input.steer * CFG.maxAngle;
     const omega = Math.min(CFG.maxTurnRate, grip / Math.max(S.v, 0.5));
     const d = target - S.th;
-    S.th += Math.sign(d) * Math.min(Math.abs(d), omega * dt);
-    S.turnAmt = Math.min(1, Math.abs(d) / 0.5);
+    const dth = Math.sign(d) * Math.min(Math.abs(d), omega * dt);
+    S.th += dth;
+    // force du virage pour le son : skis sur la carre (trajectoire en travers) + vitesse de rotation
+    S.turnAmt = Math.min(1, Math.abs(Math.sin(S.th)) * 1.4 + Math.abs(dth / dt) / 1.5);
 
     // vitesse (en neige lourde, les vitesses maximales baissent)
     const cos = Math.cos(S.th);
