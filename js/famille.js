@@ -205,7 +205,7 @@ window.Famille = (() => {
     if (!name) { warn(inName, 'Écris ton prénom pour jouer'); return false; }
     store.set(LS.name, name); inName.value = name;
     if (!familyCode()) {
-      const code = inCode.value.trim();
+      const code = inCode.value.trim().toUpperCase(); // le code famille est en majuscules
       if (!code) { warn(inCode, 'Tape le code famille'); return false; }
       store.set(LS.code, code);
       loadBoard().then(updateHome).catch(() => {});
