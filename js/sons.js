@@ -1,6 +1,6 @@
 // Pas Très Pentu Ski Cup — bruitages (V2)
 // Tous les sons sont fabriqués par le jeu avec Web Audio : aucun fichier à télécharger (0 Ko).
-// Glisse et carres suivent la vitesse et les virages ; cloches et foule sont jouées en fond.
+// La glisse suit la vitesse et devient plus forte dans les virages et en chasse-neige ; cloches et foule sont jouées en fond.
 window.Sons = (() => {
   'use strict';
 
@@ -9,8 +9,9 @@ window.Sons = (() => {
   try { muted = localStorage.getItem(KEY) === '1'; } catch (e) { /* stockage indisponible */ }
 
   let ac = null, master = null, noise = null;
-  let glide = null, edge = null, crowd = null;
+  let glide = null, crowd = null;
   let bellTimer = 0, cheer = null, reverseTimer = 0;
+  let clapBuses = [];
   const listeners = [];
 
   function supported() { return !!(window.AudioContext || window.webkitAudioContext); }
@@ -18,7 +19,10 @@ window.Sons = (() => {
   // À appeler depuis un appui (bouton « Jouer ») : obligatoire sur iPhone.
   function unlock() {
     if (!supported()) return;
+    // Un contexte audio fermé par le système ne repart jamais : on en refait un neuf
+    if (ac && ac.state === 'closed') ac = null;
     if (!ac) {
+      clapBuses = [];
       try {
         // Respecte le mode silencieux de l'iPhone quand le navigateur le permet
         if (navigator.audioSession) navigator.audioSession.type = 'ambient';
@@ -32,11 +36,25 @@ window.Sons = (() => {
       noise = makeNoise(2);
       buildLoops();
     }
-    if (ac.state === 'suspended') ac.resume();
+    wake();
     // petit son vide pour débloquer la sortie audio d'iOS
     const b = ac.createBuffer(1, 1, 22050), s = ac.createBufferSource();
     s.buffer = b; s.connect(master); s.start(0);
   }
+
+  // Relance le son s'il a été mis en pause par le navigateur. Sur iPhone, l'état peut être
+  // « suspended » mais aussi « interrupted » (clavier, appel, autre appli, écran verrouillé…).
+  function wake() {
+    if (!ac || ac.state === 'running' || ac.state === 'closed') return;
+    const p = ac.resume();
+    if (p && p.catch) p.catch(() => {});
+  }
+  // Chaque appui ou touche est une occasion de relancer le son
+  for (const ev of ['touchend', 'pointerup', 'click', 'keydown']) {
+    document.addEventListener(ev, wake, { capture: true, passive: true });
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
+  window.addEventListener('pageshow', wake);
 
   function makeNoise(seconds) {
     const n = Math.floor(ac.sampleRate * seconds);
@@ -69,19 +87,6 @@ window.Sons = (() => {
       src.start();
       glide = { lp, g };
     }
-    // Carres : crissement aigu, granuleux
-    {
-      const src = noiseSource();
-      const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 3000; bp.Q.value = 2.5;
-      const grit = ac.createGain(); grit.gain.value = 0.6;
-      const lfo = ac.createOscillator(); lfo.frequency.value = 23; lfo.type = 'triangle';
-      const lfoAmt = ac.createGain(); lfoAmt.gain.value = 0.4;
-      lfo.connect(lfoAmt); lfoAmt.connect(grit.gain);
-      const g = ac.createGain(); g.gain.value = 0;
-      src.connect(bp); bp.connect(grit); grit.connect(g); g.connect(master);
-      src.start(); lfo.start();
-      edge = { bp, g, lfo };
-    }
     // Foule : murmure fait de bruits filtrés aux fréquences de la voix, qui ondulent lentement
     {
       const g = ac.createGain(); g.gain.value = 0;
@@ -101,7 +106,14 @@ window.Sons = (() => {
     }
   }
 
-  const ramp = (param, value, tc = 0.08) => param.setTargetAtTime(value, ac.currentTime, tc);
+  // Change un réglage en douceur. On n'envoie un nouvel ordre que si la valeur change vraiment :
+  // des milliers d'ordres par minute peuvent bloquer le son sur certains téléphones.
+  const ramp = (param, value, tc = 0.08) => {
+    const last = param.__target;
+    if (last !== undefined && Math.abs(value - last) <= Math.max(1e-4, Math.abs(last) * 0.03) && param.__tc === tc) return;
+    param.__target = value; param.__tc = tc;
+    param.setTargetAtTime(value, ac.currentTime, tc);
+  };
 
   // ---------- Sons ponctuels ----------
   function env(g, t, a, peak, d) {
@@ -167,12 +179,20 @@ window.Sons = (() => {
     for (let i = 0; i < n; i++) { cowbell(t, pitch, pan, vol * (1 - i * 0.2)); t += 0.18 + Math.random() * 0.25; }
   }
 
+  // Applaudissement : un petit claquement de bruit envoyé vers l'un de 6 « coins » du public déjà
+  // préparés (filtre + position), pour ne créer que deux éléments audio par claquement.
   function clap(when, pan, vol) {
+    if (!clapBuses.length) {
+      for (let i = 0; i < 6; i++) {
+        const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1100 + i * 220; bp.Q.value = 1.2;
+        const p = panner(-0.9 + i * 0.36);
+        bp.connect(p); p.connect(master);
+        clapBuses.push(bp);
+      }
+    }
     const s = ac.createBufferSource(); s.buffer = noise;
-    const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1200 + Math.random() * 900; bp.Q.value = 1.2;
     const g = ac.createGain(); env(g, when, 0.002, vol, 0.07);
-    const p = panner(pan);
-    s.connect(bp); bp.connect(g); g.connect(p); p.connect(master);
+    s.connect(g); g.connect(clapBuses[Math.min(5, Math.max(0, Math.round((pan + 0.9) / 0.36)))]);
     s.start(when, Math.random()); s.stop(when + 0.1);
   }
 
@@ -215,7 +235,7 @@ window.Sons = (() => {
     countdown(n) { beep(n === 0); },
     start() {
       if (!ac) return;
-      ramp(crowd.g.gain, 0.05, 0.6);
+      ramp(crowd.g.gain, 0, 0.3); // pas de murmure de foule pendant la descente
     },
     fall(reason) {
       if (!ac) return;
@@ -235,15 +255,15 @@ window.Sons = (() => {
       }
       // « Oh ! » de la foule
       crowdVoice(t + 0.12, 'o', 1.1, 0.16, true);
-      ramp(glide.g.gain, 0, 0.05); ramp(edge.g.gain, 0, 0.05);
-      ramp(crowd.g.gain, 0.02, 1.5);
+      ramp(glide.g.gain, 0, 0.05);
+      ramp(crowd.g.gain, 0, 1.5);
     },
     finish() {
       if (!ac) return;
       const t = ac.currentTime;
       // ovation : gros brouhaha, applaudissements nourris et cloches à toute volée
       ramp(crowd.g.gain, 0.5, 0.15);
-      setTimeout(() => { if (ac && crowd) ramp(crowd.g.gain, 0.12, 2); }, 6000);
+      setTimeout(() => { if (ac && crowd) ramp(crowd.g.gain, 0, 1.5); }, 6000);
       crowdVoice(t + 0.05, 'a', 2.2, 0.3, false);
       crowdVoice(t + 1.8, 'a', 2.0, 0.22, false);
       crowdVoice(t + 3.6, 'a', 2.0, 0.16, false);
@@ -253,13 +273,13 @@ window.Sons = (() => {
     },
     timeout() {
       if (!ac) return;
-      ramp(crowd.g.gain, 0.02, 1);
-      ramp(glide.g.gain, 0, 0.3); ramp(edge.g.gain, 0, 0.3);
+      ramp(crowd.g.gain, 0, 1);
+      ramp(glide.g.gain, 0, 0.3);
       crowdVoice(ac.currentTime + 0.05, 'o', 1.2, 0.1, true);
     },
     stop() {
       if (!ac) return;
-      ramp(crowd.g.gain, 0, 0.4); ramp(glide.g.gain, 0, 0.1); ramp(edge.g.gain, 0, 0.1);
+      ramp(crowd.g.gain, 0, 0.4); ramp(glide.g.gain, 0, 0.1);
       cheer = null;
     }
   };
@@ -270,11 +290,10 @@ window.Sons = (() => {
     const moving = st.moving && st.v > 0.3;
     const v = st.v;
     const sp = Math.min(1, v / 25);
-    ramp(glide.g.gain, moving ? 0.05 + sp * sp * 0.3 + (st.heavy ? 0.05 : 0) : 0, 0.1);
-    ramp(glide.lp.frequency, (st.heavy ? 260 : 380) + sp * 2600, 0.1);
-    const carve = moving ? Math.min(1, st.turn * Math.min(1, v / 10) + (st.brake ? 0.75 : 0) + (st.skid ? 0.9 : 0)) : 0;
-    ramp(edge.g.gain, carve * (0.05 + sp * 0.1), 0.06);
-    ramp(edge.bp.frequency, (st.heavy ? 1800 : 2600) + sp * 1800 + (st.brake ? 600 : 0), 0.1);
+    // Virages et chasse-neige : même souffle que la glisse, en plus fort (les skis raclent la neige)
+    const carve = moving ? Math.min(1, st.turn * Math.min(1, v / 10) + (st.brake ? 0.8 : 0) + (st.skid ? 1 : 0)) : 0;
+    ramp(glide.g.gain, moving ? 0.05 + sp * sp * 0.3 + (st.heavy ? 0.05 : 0) + carve * (0.18 + sp * 0.2) : 0, 0.08);
+    ramp(glide.lp.frequency, (st.heavy ? 260 : 380) + sp * 2600 + carve * 700, 0.08);
 
     // bip bip de recul des chasse-neige à l'écran
     if (st.reverse > 0) {
@@ -282,8 +301,6 @@ window.Sons = (() => {
       if (reverseTimer <= 0) { reverseBeep(0.03 + st.reverse * 0.06); reverseTimer = 1.0; }
     } else reverseTimer = 0;
 
-    // pendant la course : pas de cloches, seulement la foule qui se rapproche
-    if (st.ambient && !cheer) ramp(crowd.g.gain, 0.04 + st.progress * st.progress * 0.08, 0.8);
     // ovation à l'arrivée : applaudissements et cloches, qui diminuent doucement
     if (cheer) {
       const now = ac.currentTime;
