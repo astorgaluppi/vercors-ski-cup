@@ -33,7 +33,8 @@
     skidDec: 45 * KMH,
     bannerTime: 2, bannerCooldown: 5, splitShowTime: 3,
     // V2 : chasse-neige garés (taille en m, angle de biais)
-    plowW: 3.4, plowL: 6.8, plowAngle: 28 * DEG, plowMargin: 0.3,
+    plowScale: 1.8,            // taille des chasse-neige (1 = taille réelle d'une dameuse moyenne)
+    plowW: 3.4 * 1.8, plowL: 6.8 * 1.8, plowAngle: 28 * DEG, plowMargin: 0.3,
     // V2 : « La soupe et les cailloux » (neige lourde + plaques de terre)
     heavyGripMul: 0.65,        // adhérence réduite : virages plus larges
     heavySpeedMul: 0.85,       // vitesses maximales réduites de 15 %
@@ -977,7 +978,7 @@
       for (const b of barriers) items.push({ y: b.y, draw: () => drawBarrier(b) });
       for (const p of crowd) items.push({ y: p.y, draw: () => drawPerson(p) });
     }
-    for (const e of plows) if (e.y > yTop - 6 && e.y < yBot + 6) items.push({ y: e.y, draw: () => drawPlow(e) });
+    for (const e of plows) if (e.y > yTop - 12 && e.y < yBot + 12) items.push({ y: e.y, draw: () => drawPlow(e) });
     items.push({ y: S.y, draw: drawPlayer });
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
@@ -1016,6 +1017,7 @@
     ctx.save();
     ctx.translate(wx(e.x), wy(e.y));
     ctx.rotate(-e.phi);
+    ctx.scale(CFG.plowScale, CFG.plowScale);
     // ombre
     ctx.fillStyle = 'rgba(60,90,140,0.25)';
     roundRect(ctx, -1.6 * s + 0.35 * s, -3.2 * s + 0.35 * s, 3.2 * s, 6.6 * s, 0.4 * s); ctx.fill();
@@ -1436,6 +1438,12 @@
         brake: S.mode === 'race' && input.brake,
         skid: S.mode === 'finishing' && S.skidding,
         heavy: S.mode === 'race' && S.heavy,
+        // bip de recul quand un chasse-neige est à l'écran (plus fort quand il est proche)
+        reverse: (S.mode === 'race' || S.mode === 'countdown') ? plows.reduce((m, e) => {
+          const top = S.camY - CFG.plowL / 2, bot = S.camY + viewH() + CFG.plowL / 2;
+          if (e.y < top || e.y > bot) return m;
+          return Math.max(m, 1 - Math.min(1, Math.abs(e.y - S.y) / (viewH() * 1.2)));
+        }, 0) : 0,
         progress: Math.max(0, Math.min(1, S.y / FINISH)),
         ambient: S.mode === 'race' || S.mode === 'countdown'
       });

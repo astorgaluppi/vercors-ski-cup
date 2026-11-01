@@ -35,15 +35,11 @@ window.PISTE_V1 = {
     { y: 100, cote: 1 }
   ],
 
-  // V2 — « La soupe et les cailloux ! » : neige lourde (plus jaune) sur les 300 derniers mètres,
+  // V2 — « La soupe et les cailloux ! » : neige lourde (plus jaune) sur les 200 derniers mètres,
   // avec des plaques de terre à contourner. x : position en travers (-1 = bord gauche, 1 = bord droit),
   // r : taille de la plaque (m).
-  neigeLourde: { debut: 1200, fin: 1500 },
+  neigeLourde: { debut: 1300, fin: 1500 },
   plaquesDeTerre: [
-    { y: 1228, x: -0.45, r: 2.2 },
-    { y: 1252, x: 0.40,  r: 2.5 },
-    { y: 1275, x: -0.10, r: 2.0 },
-    { y: 1300, x: 0.55,  r: 2.4 },
     { y: 1322, x: -0.55, r: 2.2 },
     { y: 1346, x: 0.10,  r: 2.6 },
     { y: 1370, x: -0.50, r: 2.3 },

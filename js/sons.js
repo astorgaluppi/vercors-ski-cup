@@ -10,7 +10,7 @@ window.Sons = (() => {
 
   let ac = null, master = null, noise = null;
   let glide = null, edge = null, crowd = null;
-  let bellTimer = 0, cheer = null;
+  let bellTimer = 0, cheer = null, reverseTimer = 0;
   const listeners = [];
 
   function supported() { return !!(window.AudioContext || window.webkitAudioContext); }
@@ -121,6 +121,20 @@ window.Sons = (() => {
     o.start(t); o.stop(t + 0.8);
   }
 
+  // Bip de recul d'un engin : son carré aigu, 0,5 s
+  function reverseBeep(vol) {
+    const t = ac.currentTime + 0.01;
+    const o = ac.createOscillator(); o.type = 'square'; o.frequency.value = 1050;
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2500;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+    g.gain.setValueAtTime(vol, t + 0.45);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    o.connect(lp); lp.connect(g); g.connect(master);
+    o.start(t); o.stop(t + 0.55);
+  }
+
   // Cloche de vache (sonnaille) : quelques partiels métalliques non harmoniques
   function cowbell(when, pitch, pan, vol) {
     const t = when;
@@ -144,10 +158,10 @@ window.Sons = (() => {
     s.start(t, Math.random()); s.stop(t + 0.08);
   }
 
-  function bellBurst(near) {
+  function bellBurst(loud) {
     const pitch = 380 + Math.random() * 520;
     const pan = (Math.random() * 2 - 1) * 0.9;
-    const vol = (0.025 + Math.random() * 0.03) * (0.7 + near * 0.8);
+    const vol = (0.025 + Math.random() * 0.03) * loud;
     const n = 1 + Math.floor(Math.random() * 3);
     let t = ac.currentTime + 0.02;
     for (let i = 0; i < n; i++) { cowbell(t, pitch, pan, vol * (1 - i * 0.2)); t += 0.18 + Math.random() * 0.25; }
@@ -202,7 +216,6 @@ window.Sons = (() => {
     start() {
       if (!ac) return;
       ramp(crowd.g.gain, 0.05, 0.6);
-      bellTimer = 0.5;
     },
     fall(reason) {
       if (!ac) return;
@@ -228,12 +241,15 @@ window.Sons = (() => {
     finish() {
       if (!ac) return;
       const t = ac.currentTime;
-      ramp(crowd.g.gain, 0.22, 0.15);
-      setTimeout(() => { if (ac && crowd) ramp(crowd.g.gain, 0.07, 1.5); }, 3200);
-      crowdVoice(t + 0.05, 'a', 1.8, 0.18, false);
-      cheer = { until: t + 4.5 };
-      for (let i = 0; i < 4; i++) whistle(t + 0.2 + Math.random() * 2.5);
-      for (let i = 0; i < 6; i++) setTimeout(() => ac && bellBurst(1), 100 + i * 350);
+      // ovation : gros brouhaha, applaudissements nourris et cloches à toute volée
+      ramp(crowd.g.gain, 0.5, 0.15);
+      setTimeout(() => { if (ac && crowd) ramp(crowd.g.gain, 0.12, 2); }, 6000);
+      crowdVoice(t + 0.05, 'a', 2.2, 0.3, false);
+      crowdVoice(t + 1.8, 'a', 2.0, 0.22, false);
+      crowdVoice(t + 3.6, 'a', 2.0, 0.16, false);
+      cheer = { t0: t, until: t + 7 };
+      bellTimer = 0;
+      for (let i = 0; i < 7; i++) whistle(t + 0.2 + Math.random() * 4);
     },
     timeout() {
       if (!ac) return;
@@ -260,23 +276,27 @@ window.Sons = (() => {
     ramp(edge.g.gain, carve * (0.05 + sp * 0.1), 0.06);
     ramp(edge.bp.frequency, (st.heavy ? 1800 : 2600) + sp * 1800 + (st.brake ? 600 : 0), 0.1);
 
-    // cloches en fond, plus nombreuses près de l'arrivée
-    if (st.ambient) {
-      bellTimer -= dt;
-      if (bellTimer <= 0) {
-        bellBurst(st.progress);
-        const rate = 0.35 + st.progress * st.progress * 2.2; // salves par seconde
-        bellTimer = (0.5 + Math.random()) / rate;
-      }
-      // la foule se rapproche
-      if (!cheer) ramp(crowd.g.gain, 0.04 + st.progress * st.progress * 0.08, 0.8);
-    }
-    // applaudissements de l'ovation
+    // bip bip de recul des chasse-neige à l'écran
+    if (st.reverse > 0) {
+      reverseTimer -= dt;
+      if (reverseTimer <= 0) { reverseBeep(0.03 + st.reverse * 0.06); reverseTimer = 1.0; }
+    } else reverseTimer = 0;
+
+    // pendant la course : pas de cloches, seulement la foule qui se rapproche
+    if (st.ambient && !cheer) ramp(crowd.g.gain, 0.04 + st.progress * st.progress * 0.08, 0.8);
+    // ovation à l'arrivée : applaudissements et cloches, qui diminuent doucement
     if (cheer) {
-      if (ac.currentTime > cheer.until) cheer = null;
+      const now = ac.currentTime;
+      if (now > cheer.until) cheer = null;
       else {
-        const n = Math.random() < dt * 40 ? 1 : 0;
-        for (let i = 0; i < n; i++) clap(ac.currentTime + Math.random() * 0.05, (Math.random() * 2 - 1) * 0.8, 0.05 + Math.random() * 0.05);
+        const fade = 1 - Math.max(0, (now - cheer.t0 - 3) / (cheer.until - cheer.t0 - 3));
+        let n = 220 * fade * dt; // applaudissements par image
+        while (n > 0) {
+          if (n >= 1 || Math.random() < n) clap(now + Math.random() * dt, (Math.random() * 2 - 1) * 0.9, (0.06 + Math.random() * 0.08) * (0.4 + 0.6 * fade));
+          n -= 1;
+        }
+        bellTimer -= dt;
+        if (bellTimer <= 0) { bellBurst(4 * (0.3 + 0.7 * fade)); bellTimer = (0.08 + Math.random() * 0.15) / Math.max(0.3, fade); }
       }
     }
   }
