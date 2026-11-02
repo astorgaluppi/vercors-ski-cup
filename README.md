@@ -16,7 +16,7 @@ Nouveautés de la V2 :
   Le record de la famille s'affiche au départ, les écarts s'affichent aux temps intermédiaires et à l'arrivée,
   et l'écran des résultats donne la place dans la famille. Sans réseau, le jeu marche quand même et le temps
   est envoyé à la descente suivante.
-- **Bruitages**, tous fabriqués par le jeu (0 Ko de fichiers son) : glisse qui suit la vitesse,
+- **Bruitages**, tous fabriqués par le jeu (0 Ko de fichiers son) : glisse douce de poudreuse qui suit la vitesse,
   plus forte dans les virages et en chasse-neige, bips du compte à rebours, bip de recul des chasse-neige,
   ovation à l'arrivée (applaudissements, brouhaha et cloches de vache), chute avec le « Oh ! » de la foule. Bouton 🔊 pour couper le son.
 - **Obstacles** : deux chasse-neige garés en chicane très large au départ (échauffement), et

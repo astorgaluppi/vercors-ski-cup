@@ -290,10 +290,11 @@ window.Sons = (() => {
     const moving = st.moving && st.v > 0.3;
     const v = st.v;
     const sp = Math.min(1, v / 25);
-    // Virages et chasse-neige : même souffle que la glisse, en plus fort (les skis raclent la neige)
+    // Glisse : reste un souffle doux de poudreuse même à pleine vitesse (volume et aigus limités).
+    // Virages et chasse-neige : même souffle, un peu plus fort (les skis raclent la neige)
     const carve = moving ? Math.min(1, st.turn * Math.min(1, v / 10) + (st.brake ? 0.8 : 0) + (st.skid ? 1 : 0)) : 0;
-    ramp(glide.g.gain, moving ? 0.05 + sp * sp * 0.3 + (st.heavy ? 0.05 : 0) + carve * (0.18 + sp * 0.2) : 0, 0.08);
-    ramp(glide.lp.frequency, (st.heavy ? 260 : 380) + sp * 2600 + carve * 700, 0.08);
+    ramp(glide.g.gain, moving ? 0.05 + sp * sp * 0.13 + (st.heavy ? 0.04 : 0) + carve * (0.13 + sp * 0.12) : 0, 0.08);
+    ramp(glide.lp.frequency, (st.heavy ? 260 : 380) + sp * 1000 + carve * 500, 0.08);
 
     // bip bip de recul des chasse-neige à l'écran
     if (st.reverse > 0) {
