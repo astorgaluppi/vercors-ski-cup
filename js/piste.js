@@ -24,11 +24,11 @@ window.PISTE_V1 = {
   ],
   champsDeBosses: [
     // ecartRangs / ecartBosses : distance entre deux rangées et entre deux bosses d'une rangée (m)
-    // V3 — premier champ en « passages » : rangées de bosses serrées avec un seul passage par rangée,
+    // V3 — champs en « passages » : rangées de bosses serrées avec un seul passage par rangée,
     // largeurPassage (m) de large, centré à tour de rôle sur chaque valeur de passages (m depuis le milieu,
     // négatif = à gauche). Le passage change de côté à chaque rangée : impossible de passer tout droit.
     { debut: 300,  longueur: 50,  ecartRangs: 12.5, ecartBosses: 1.5, largeurPassage: 6, passages: [-3.5, 3.5] },  // premier champ, plus facile
-    { debut: 1000, longueur: 50,  ecartRangs: 8,   ecartBosses: 7.5 }
+    { debut: 1000, longueur: 50,  ecartRangs: 12.5, ecartBosses: 1.5, largeurPassage: 6, passages: [-3.5, 3.5] }
   ],
 
   // V2 — deux chasse-neige garés de biais, de chaque côté, en chicane très large (échauffement).
