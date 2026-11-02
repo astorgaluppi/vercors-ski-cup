@@ -138,6 +138,17 @@
       const dy = f.ecartRangs || 5.5, dx = f.ecartBosses || 5.2;
       for (let y = f.debut; y <= f.debut + f.longueur; y += dy, row++) {
         const c = TRACK.center(y), hw = TRACK.halfW(y);
+        if (f.passages) {
+          // V3 : rangées de bosses serrées, avec un seul passage qui change de côté d'une rangée à l'autre.
+          // Aucune ligne droite ne traverse le champ : il faut slalomer d'un passage à l'autre.
+          const gc = f.passages[row % f.passages.length], half = (f.largeurPassage || 5) / 2 + CFG.bumpHitRadius;
+          for (let x = -hw + 0.6; x < hw - 0.3; x += dx) {
+            k++;
+            if (Math.abs(x - gc) < half) continue;
+            bumps.push({ x: c + x + (hash(k) - 0.5) * 0.2, y: y + (hash(k + 9) - 0.5) * 0.8, r: CFG.bumpRadius * (0.95 + hash(k * 7) * 0.1), hit: false });
+          }
+          continue;
+        }
         for (let x = -hw + (row % 2 ? 0.3 : 0.8) * dx; x < hw - 0.6; x += dx) {
           k++;
           bumps.push({ x: c + x + (hash(k) - 0.5) * 0.8, y: y + (hash(k + 9) - 0.5) * 1.2, r: CFG.bumpRadius * (0.9 + hash(k * 7) * 0.2), hit: false });
