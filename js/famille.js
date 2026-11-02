@@ -1,4 +1,4 @@
-// Pas Très Pentu Ski Cup — prénom du joueur, code famille et classement partagé (V2).
+// Pas Très Pentu Ski Cup — prénom du joueur, code famille et classement partagé (V2, skis du record en V3).
 // Les scores sont dans Supabase : une ligne par joueur, mise à jour seulement quand il bat son record.
 window.Famille = (() => {
   'use strict';
@@ -42,6 +42,8 @@ window.Famille = (() => {
         const err = new Error((data && data.message) || ('Erreur ' + r.status));
         err.badCode = /code famille/i.test(err.message);
         err.server = true;
+        err.status = r.status;
+        err.missingFn = r.status === 404 || (data && data.code === 'PGRST202');
         throw err;
       }
       return data;
@@ -61,8 +63,16 @@ window.Famille = (() => {
   function pending() { try { return JSON.parse(store.get(LS.pending) || '[]') || []; } catch (e) { return []; } }
   function setPending(a) { store.set(LS.pending, a.length ? JSON.stringify(a.slice(-50)) : null); }
 
+  // V3 : la paire de skis est envoyée avec la descente. Si la base n'a pas encore été mise à jour
+  // (fichier supabase/v3-skis.sql pas encore lancé), on envoie la descente sans les skis.
+  let skiOk = true;
   async function send(run) {
-    return rpc('enregistrer_descente', { code: run.code, nom: run.nom, temps_ms: run.temps_ms, i1_ms: run.i1_ms, i2_ms: run.i2_ms });
+    const body = { code: run.code, nom: run.nom, temps_ms: run.temps_ms, i1_ms: run.i1_ms, i2_ms: run.i2_ms };
+    if (skiOk && run.ski) {
+      try { return await rpc('enregistrer_descente', Object.assign({ ski: run.ski }, body)); }
+      catch (e) { if (!e.missingFn) throw e; skiOk = false; }
+    }
+    return rpc('enregistrer_descente', body);
   }
 
   async function flush() {
@@ -83,7 +93,8 @@ window.Famille = (() => {
       code: familyCode(), nom: playerName(),
       temps_ms: r.finished ? ms(r.time) : null,
       i1_ms: r.finished ? ms(r.splits && r.splits[0]) : null,
-      i2_ms: r.finished ? ms(r.splits && r.splits[1]) : null
+      i2_ms: r.finished ? ms(r.splits && r.splits[1]) : null,
+      ski: r.ski || null
     };
     const before = board.find((b) => b.prenom === run.nom);
     const famBefore = reference();
@@ -126,6 +137,8 @@ window.Famille = (() => {
     const x = new Date(d);
     return isNaN(x) ? '' : x.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
+  const SKI_NOMS = { rhea: 'Tante Rhéa', bec: 'Madame Bec', fourcade: 'Père Fourcade' };
+  const skiTxt = (b) => (b.ski && SKI_NOMS[b.ski] ? ` · ${SKI_NOMS[b.ski]}` : '');
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   function boardRows(highlight, limit) {
@@ -141,10 +154,27 @@ window.Famille = (() => {
     return { html: rows.join(''), rank: me >= 0 ? me + 1 : null, total: ranked.length };
   }
 
+  // V3 : podium des 3 meilleurs temps de la famille sur la page d'accueil (marches 2-1-3)
+  function fillPodium() {
+    const box = $('home-podium');
+    if (!box) return;
+    if (!enabled || !familyCode()) { box.style.display = 'none'; return; }
+    box.style.display = '';
+    const ranked = board.filter((b) => b.meilleur_ms).sort((a, b) => a.meilleur_ms - b.meilleur_ms).slice(0, 3);
+    if (!ranked.length) {
+      box.innerHTML = `<p class="podium-msg">${boardOk ? 'Le podium attend ses premiers champions !' : 'Podium indisponible pour le moment.'}</p>`;
+      return;
+    }
+    box.innerHTML = [1, 0, 2].map((i) => {
+      const b = ranked[i];
+      return `<div class="p p${i + 1}${b ? '' : ' empty'}"><span class="nm">${b ? esc(b.prenom) : '…'}</span>` +
+        `<span class="tm">${b ? fmtMs(b.meilleur_ms) : '--'}</span><span class="st">${i + 1}</span></div>`;
+    }).join('');
+  }
+
   function updateHome() {
+    fillPodium();
     if (!enabled) return;
-    const ref = reference();
-    $('home-record').textContent = ref ? `Record : ${ref.prenom} ${fmtMs(ref.ms)}` : '';
     $('home-code-row').style.display = familyCode() ? 'none' : '';
     $('home-change-code').style.display = familyCode() ? '' : 'none';
   }
@@ -162,7 +192,7 @@ window.Famille = (() => {
     const me = playerName();
     list.innerHTML = ranked.map((b, i) =>
       `<li class="${b.prenom === me ? 'me' : ''}"><span class="rk">${i + 1}</span><span class="nm">${esc(b.prenom)}` +
-      `<small>${fmtDate(b.date_record)} · ${b.descentes} descente${b.descentes > 1 ? 's' : ''}</small></span>` +
+      `<small>${fmtDate(b.date_record)}${skiTxt(b)} · ${b.descentes} descente${b.descentes > 1 ? 's' : ''}</small></span>` +
       `<span class="tm">${fmtMs(b.meilleur_ms)}</span></li>`).join('') +
       others.map((b) =>
         `<li class="${b.prenom === me ? 'me' : ''}"><span class="rk">–</span><span class="nm">${esc(b.prenom)}` +
@@ -223,7 +253,7 @@ window.Famille = (() => {
 
   function init() {
     if (!enabled) {
-      for (const id of ['home-player', 'home-record', 'home-board-btn', 'res-family', 'home-change-code']) { const el = $(id); if (el) el.style.display = 'none'; }
+      for (const id of ['home-player', 'home-podium', 'home-board-btn', 'res-family', 'home-change-code']) { const el = $(id); if (el) el.style.display = 'none'; }
       return;
     }
     const inName = $('in-prenom');

@@ -1,4 +1,4 @@
-// Pas Très Pentu Ski Cup — bruitages (V2)
+// Pas Très Pentu Ski Cup — bruitages (V2) et musique d'attente (V3)
 // Tous les sons sont fabriqués par le jeu avec Web Audio : aucun fichier à télécharger (0 Ko).
 // La glisse suit la vitesse et devient plus forte dans les virages et en chasse-neige ; cloches et foule sont jouées en fond.
 window.Sons = (() => {
@@ -37,6 +37,7 @@ window.Sons = (() => {
       buildLoops();
     }
     wake();
+    if (wantMusic) startMusic();
     // petit son vide pour débloquer la sortie audio d'iOS
     const b = ac.createBuffer(1, 1, 22050), s = ac.createBufferSource();
     s.buffer = b; s.connect(master); s.start(0);
@@ -230,10 +231,67 @@ window.Sons = (() => {
     }
   }
 
+  // ---------- V3 : musique d'attente de la page d'accueil ----------
+  // Petite boucle légère (arpège et basse douce sur 4 accords), fabriquée par le jeu.
+  // Elle démarre au premier toucher de l'écran et s'arrête au départ de la course.
+  let wantMusic = false, musicTimer = 0, musicBus = null, nextNote = 0, noteIdx = 0;
+  const BPM = 96, EIGHTH = 60 / BPM / 2;
+  const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
+  // Do - La mineur - Fa - Sol, 8 croches par accord
+  const CHORDS = [[60, 64, 67, 72], [57, 60, 64, 69], [53, 57, 60, 65], [55, 59, 62, 67]];
+  const PATTERN = [0, 1, 2, 3, 2, 1, 2, 1];
+  function musicNote(when, midi, dur, vol, type) {
+    const o = ac.createOscillator(); o.type = type; o.frequency.value = mtof(midi);
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(vol, when + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    o.connect(g); g.connect(musicBus);
+    o.start(when); o.stop(when + dur + 0.05);
+  }
+  function musicTick() {
+    if (!ac || !musicBus) return;
+    if (ac.state !== 'running') { nextNote = ac.currentTime + 0.1; return; }
+    while (nextNote < ac.currentTime + 0.25) {
+      const bar = Math.floor(noteIdx / 8) % CHORDS.length, step = noteIdx % 8, ch = CHORDS[bar];
+      musicNote(nextNote, ch[PATTERN[step]] + 12, EIGHTH * 1.8, 0.05, 'triangle');
+      if (step === 0) musicNote(nextNote, ch[0] - 12, EIGHTH * 7.5, 0.07, 'sine');
+      if (step === 4) musicNote(nextNote, ch[0] - 5, EIGHTH * 3.5, 0.04, 'sine');
+      if (step === 6 && bar === 3) musicNote(nextNote, ch[3] + 12, EIGHTH * 2, 0.03, 'sine'); // petit clin d'œil
+      nextNote += EIGHTH; noteIdx++;
+    }
+  }
+  function startMusic() {
+    if (!ac || musicTimer) return;
+    musicBus = ac.createGain();
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200;
+    musicBus.gain.setValueAtTime(0.0001, ac.currentTime);
+    musicBus.gain.exponentialRampToValueAtTime(1, ac.currentTime + 1.2);
+    musicBus.connect(lp); lp.connect(master);
+    nextNote = ac.currentTime + 0.1; noteIdx = 0;
+    musicTimer = setInterval(musicTick, 50);
+    musicTick();
+  }
+  function stopMusic() {
+    if (musicTimer) { clearInterval(musicTimer); musicTimer = 0; }
+    if (musicBus && ac) {
+      const bus = musicBus;
+      bus.gain.cancelScheduledValues(ac.currentTime);
+      bus.gain.setTargetAtTime(0, ac.currentTime, 0.15);
+      setTimeout(() => { try { bus.disconnect(); } catch (e) { /* déjà débranché */ } }, 1500);
+    }
+    musicBus = null;
+  }
+  function music(on) {
+    wantMusic = !!on;
+    if (wantMusic) startMusic(); else stopMusic();
+  }
+
   // ---------- Événements du jeu ----------
   const on = {
     countdown(n) { beep(n === 0); },
     start() {
+      music(false);
       if (!ac) return;
       ramp(crowd.g.gain, 0, 0.3); // pas de murmure de foule pendant la descente
     },
@@ -290,10 +348,11 @@ window.Sons = (() => {
     const moving = st.moving && st.v > 0.3;
     const v = st.v;
     const sp = Math.min(1, v / 25);
-    // Virages et chasse-neige : même souffle que la glisse, en plus fort (les skis raclent la neige)
+    // Glisse : reste un souffle doux de poudreuse même à pleine vitesse (volume et aigus limités).
+    // Virages et chasse-neige : même souffle, un peu plus fort (les skis raclent la neige)
     const carve = moving ? Math.min(1, st.turn * Math.min(1, v / 10) + (st.brake ? 0.8 : 0) + (st.skid ? 1 : 0)) : 0;
-    ramp(glide.g.gain, moving ? 0.05 + sp * sp * 0.3 + (st.heavy ? 0.05 : 0) + carve * (0.18 + sp * 0.2) : 0, 0.08);
-    ramp(glide.lp.frequency, (st.heavy ? 260 : 380) + sp * 2600 + carve * 700, 0.08);
+    ramp(glide.g.gain, moving ? 0.05 + sp * sp * 0.13 + (st.heavy ? 0.04 : 0) + carve * (0.13 + sp * 0.12) : 0, 0.08);
+    ramp(glide.lp.frequency, (st.heavy ? 260 : 380) + sp * 1000 + carve * 500, 0.08);
 
     // bip bip de recul des chasse-neige à l'écran
     if (st.reverse > 0) {
@@ -326,7 +385,7 @@ window.Sons = (() => {
   }
 
   return {
-    unlock, update, on, supported,
+    unlock, update, on, supported, music,
     isMuted: () => muted,
     setMuted,
     toggle() { setMuted(!muted); },

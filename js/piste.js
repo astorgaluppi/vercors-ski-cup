@@ -1,4 +1,4 @@
-// Pas Très Pentu Ski Cup — fichier de tronçons de la piste (V2).
+// Pas Très Pentu Ski Cup — fichier de tronçons de la piste (V3).
 // La même piste pour tout le monde, pour que les chronos soient comparables.
 // Distances en mètres de descente depuis la ligne de départ.
 // angle : 0 = droit dans la pente ; positif = diagonale vers la droite, négatif = vers la gauche.
@@ -24,8 +24,11 @@ window.PISTE_V1 = {
   ],
   champsDeBosses: [
     // ecartRangs / ecartBosses : distance entre deux rangées et entre deux bosses d'une rangée (m)
-    { debut: 300,  longueur: 50,  ecartRangs: 8,   ecartBosses: 7.5 },  // premier champ, plus facile
-    { debut: 1000, longueur: 50,  ecartRangs: 8,   ecartBosses: 7.5 }
+    // V3 — champs en « passages » : rangées de bosses serrées avec un seul passage par rangée,
+    // largeurPassage (m) de large, centré à tour de rôle sur chaque valeur de passages (m depuis le milieu,
+    // négatif = à gauche). Le passage change de côté à chaque rangée : impossible de passer tout droit.
+    { debut: 300,  longueur: 50,  ecartRangs: 12.5, ecartBosses: 1.5, largeurPassage: 6, passages: [-3.5, 3.5] },  // premier champ, plus facile
+    { debut: 1000, longueur: 50,  ecartRangs: 12.5, ecartBosses: 1.5, largeurPassage: 6, passages: [-3.5, 3.5] }
   ],
 
   // V2 — deux chasse-neige garés de biais, de chaque côté, en chicane très large (échauffement).
@@ -34,6 +37,12 @@ window.PISTE_V1 = {
     { y: 70,  cote: -1 },
     { y: 100, cote: 1 }
   ],
+
+  // V3 — École de ski : un moniteur suivi de 8 enfants, en file, qui descend en zigzag d'un bord à l'autre
+  // à environ 8 km/h. debut : hauteur où commence le zigzag (m) ; depart : l'école se met en route quand le
+  // joueur passe cette hauteur ; ecart : distance entre deux skieurs de la file (m) ; descente : mètres de
+  // pente descendus à chaque traversée ; marge : distance gardée avec les sapins (m).
+  ecoleDeSki: { debut: 400, depart: 330, vitesse: 8, ecart: 2.4, descente: 7, marge: 2.5 },
 
   // V2 — « La soupe et les cailloux ! » : neige lourde (plus jaune) sur les 200 derniers mètres,
   // avec des plaques de terre à contourner. x : position en travers (-1 = bord gauche, 1 = bord droit),

@@ -86,7 +86,44 @@
     #btn-son { position: absolute; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 6; width: 48px; height: 48px;
       border-radius: 50%; border: 0; background: rgba(27,42,68,.75); color: #fff; font-size: 22px; line-height: 48px; padding: 0; cursor: pointer; }
     .version { position: absolute; left: 12px; bottom: calc(8px + env(safe-area-inset-bottom)); margin: 0; font-size: 12px; color: #8193b0; }
-    @media (max-height: 640px) { #home-skier { height: 130px; width: 120px; } .title-main { font-size: 44px; } }
+    /* V3 : choix des skis */
+    #screen-skis .card { max-width: 400px; gap: 12px; }
+    .skis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+    .ski-card { appearance: none; font: inherit; color: var(--navy); background: #f1f5fb; border: 3px solid transparent; border-radius: 16px;
+      padding: 8px 4px 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; min-height: 44px; }
+    .ski-card canvas { width: 54px; height: 120px; }
+    .ski-card b { font-size: 14px; font-weight: 900; line-height: 1.1; }
+    .ski-card i { font-size: 11.5px; line-height: 1.25; color: #41526f; }
+    .ski-card.sel { background: #fff3c4; border-color: var(--yellow); box-shadow: 0 4px 12px rgba(27,42,68,.18); }
+    .ski-stats { width: 100%; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 15px; text-align: left; }
+    .ski-stats b { font-weight: 900; }
+    .ski-stats .bar { align-self: center; height: 10px; border-radius: 5px; background: #e3eaf4; overflow: hidden; }
+    .ski-stats .bar span { display: block; height: 100%; background: var(--red); border-radius: 5px; transition: width .2s; }
+    .ski-model { font-size: 12px; font-weight: 700; color: #5c6f8f; }
+    /* V3 : page d'accueil (logo, podium, ombre chinoise du Vercors, bande du tire-fesses) */
+    #screen-home { justify-content: center; gap: 12px; background: linear-gradient(180deg, #9fcdfb 0%, #d4e8fd 40%, #f6f9fd 70%); }
+    .hero { position: relative; width: calc(100% + 48px); margin: 0 -24px; padding: 0 24px 6px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .vercors { position: absolute; left: 0; right: 0; top: 34px; width: 100%; height: 190px; pointer-events: none;
+      -webkit-mask-image: linear-gradient(180deg, #000 60%, transparent); mask-image: linear-gradient(180deg, #000 60%, transparent); }
+    .hero > :not(.vercors) { position: relative; }
+    .logo { position: relative; width: 100%; max-width: 360px; height: auto; margin: 0 0 2px; }
+    .podium { position: relative; display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: end; gap: 6px; width: 100%; max-width: 330px; min-height: 120px; }
+    .podium .p { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+    .podium .nm { font-weight: 900; font-size: 16px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .podium .tm { font-weight: 800; font-size: 14px; color: #41526f; font-variant-numeric: tabular-nums; margin-bottom: 3px; }
+    .podium .st { width: 100%; border-radius: 10px 10px 0 0; display: flex; align-items: flex-start; justify-content: center; color: #fff;
+      font-weight: 900; font-size: 24px; padding-top: 4px; text-shadow: 0 2px 0 rgba(0,0,0,.18); box-shadow: inset 0 -6px 0 rgba(0,0,0,.08); }
+    .podium .p1 .st { height: 70px; background: linear-gradient(#ffd54f, #f5b301); }
+    .podium .p2 .st { height: 52px; background: linear-gradient(#e3e8ef, #aab4c2); }
+    .podium .p3 .st { height: 40px; background: linear-gradient(#e7a873, #c27a3e); }
+    .podium .p.empty .nm, .podium .p.empty .tm { color: #8193b0; font-weight: 700; }
+    .podium-msg { grid-column: 1 / -1; align-self: center; margin: 0; font-size: 16px; font-weight: 800; color: #41526f; }
+    #screen-home > :not(.vercors):not(.version) { position: relative; }
+    #screen-home .hint { font-size: 14px; }
+    #tirefesses { display: none; position: fixed; top: 0; bottom: 0; right: max(16px, calc((100vw - 480px) / 4 - 80px)); width: 160px; height: 100%; }
+    @media (min-width: 860px) { body.accueil #tirefesses { display: block; } }
+    @media (max-height: 700px) { #screen-home .hint { display: none; } .podium { min-height: 104px; } .podium .p1 .st { height: 58px; } .podium .p2 .st { height: 46px; } .podium .p3 .st { height: 36px; } }
+    @media (max-height: 600px) { .logo { max-width: 280px; } }
     @media (orientation: landscape) and (pointer: coarse) and (max-height: 500px) { #rotate { display: flex; } }
   </style>
 </head>
@@ -96,12 +133,15 @@
     <div id="safe-probe"></div>
 
     <section id="screen-home" class="screen">
-      <svg class="mountains" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true">
-        <path d="M0 120 L60 40 L95 75 L150 15 L210 80 L250 45 L300 95 L340 30 L400 85 L400 120 Z" fill="#dce9f8"/>
-        <path d="M150 15 L170 39 L160 36 L150 44 L140 34 L132 37 Z M340 30 L357 52 L346 49 L338 55 L330 47 L324 49 Z M60 40 L74 58 L64 55 L56 61 L49 55 Z" fill="#fff"/>
+      <div class="hero">
+      <svg class="vercors" viewBox="0 0 400 170" preserveAspectRatio="none" aria-hidden="true">
+        <!-- ombre chinoise du Vercors : falaises du plateau au loin, Mont Aiguille devant -->
+        <path d="M0 170 L0 74 L22 70 L40 72 L52 52 L58 46 L96 43 L132 45 L146 47 L154 60 L170 62 L182 58 L192 38 L198 33 L250 30 L292 33 L300 37 L310 56 L326 60 L344 52 L352 46 L384 45 L400 48 L400 170 Z" fill="#c3d5ec"/>
+        <path d="M0 170 L0 118 L40 112 L78 118 L112 110 L136 106 L150 102 L154 78 L157 72 L162 70 L188 69 L193 72 L197 80 L200 104 L222 112 L262 108 L300 116 L338 110 L372 114 L400 112 L400 170 Z" fill="#a7bfdd"/>
       </svg>
-      <h1><span class="title-top">Pas Très Pentu</span><span class="title-main">Ski Cup</span></h1>
-      <canvas id="home-skier" aria-hidden="true"></canvas>
+      <img class="logo" src="img/logo-titre.png" alt="Pas Très Pentu Ski Cup" width="1024" height="283">
+      <div class="podium" id="home-podium" aria-label="Podium de la famille"></div>
+      </div>
       <div class="player" id="home-player">
         <input class="field" id="in-prenom" type="text" maxlength="20" placeholder="Ton prénom" autocomplete="given-name" autocapitalize="words" enterkeyhint="go" spellcheck="false">
         <div id="home-code-row">
@@ -110,18 +150,28 @@
         <p class="warn" id="home-warn"></p>
       </div>
       <button class="btn btn-primary" data-action="play">Jouer</button>
-      <p class="record" id="home-record"></p>
       <button class="btn btn-link" id="home-board-btn">🏆 Classement de la famille</button>
       <p class="hint">Pose ton pouce et glisse :<br><b>← →</b> tourner · <b>↓</b> schuss · <b>↑</b> chasse-neige<br>Évite les sapins, 1&nbsp;500&nbsp;m en moins de 2&nbsp;min&nbsp;!</p>
       <button class="tiny" id="home-change-code" type="button">Changer de code famille</button>
-      <p class="version">version 2.4</p>
+      <p class="version">version 3.0</p>
+    </section>
+
+    <section id="screen-skis" class="screen dim">
+      <div class="card">
+        <p class="big-title" style="font-size:30px">Choisis tes skis</p>
+        <div class="skis" id="ski-list"></div>
+        <div class="ski-stats" id="ski-stats"></div>
+        <button class="btn btn-primary" id="ski-go">C'est parti !</button>
+        <button class="btn btn-link" data-action="home">Accueil</button>
+      </div>
     </section>
 
     <section id="screen-fall" class="screen dim">
       <div class="card">
         <p class="big-title">Chute !</p>
         <p class="sub">Retour au départ pour une nouvelle descente.</p>
-        <button class="btn btn-primary" data-action="play">Rejouer</button>
+        <button class="btn btn-primary" data-action="replay">Rejouer</button>
+        <button class="btn btn-link" data-action="skis">Changer de skis</button>
         <button class="btn btn-link" data-action="home">Accueil</button>
       </div>
     </section>
@@ -130,7 +180,8 @@
       <div class="card">
         <p class="big-title">Hors délai</p>
         <p class="sub">Plus de 2 minutes : la course n'est pas comptée.</p>
-        <button class="btn btn-primary" data-action="play">Rejouer</button>
+        <button class="btn btn-primary" data-action="replay">Rejouer</button>
+        <button class="btn btn-link" data-action="skis">Changer de skis</button>
         <button class="btn btn-link" data-action="home">Accueil</button>
       </div>
     </section>
@@ -148,7 +199,8 @@
           <p class="msg" id="res-msg"></p>
           <ol class="board" id="res-board"></ol>
         </div>
-        <button class="btn btn-primary" data-action="play">Rejouer</button>
+        <button class="btn btn-primary" data-action="replay">Rejouer</button>
+        <button class="btn btn-link" data-action="skis">Changer de skis</button>
         <button class="btn btn-link" data-action="home">Accueil</button>
       </div>
     </section>
@@ -165,13 +217,15 @@
 
     <button id="btn-son" type="button" aria-label="Couper le son">🔊</button>
   </div>
+  <canvas id="tirefesses" aria-hidden="true"></canvas>
   <div id="rotate">Tourne ton téléphone en mode portrait 📱</div>
 
-  <script src="js/config.js?v=2.4"></script>
-  <script src="js/piste.js?v=2.4"></script>
-  <script src="js/sons.js?v=2.4"></script>
-  <script src="js/famille.js?v=2.4"></script>
-  <script src="js/game.js?v=2.4"></script>
+  <script src="js/config.js?v=3.0"></script>
+  <script src="js/piste.js?v=3.0"></script>
+  <script src="js/sons.js?v=3.0"></script>
+  <script src="js/famille.js?v=3.0"></script>
+  <script src="js/game.js?v=3.0"></script>
+  <script src="js/accueil.js?v=3.0"></script>
   <script>
     (() => {
       const b = document.getElementById('btn-son');
