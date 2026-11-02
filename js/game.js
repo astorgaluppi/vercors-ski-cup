@@ -366,6 +366,21 @@
     // bras + bâtons (derrière le buste d'un côté, devant de l'autre : simple)
     const sx = bodyX, sy = shoulderY + 2 * u;
     const arm = (side) => {
+      if (pose.cheer) {
+        // bras levés, bâtons en l'air (le skieur est arrêté dans l'aire d'arrivée)
+        const wave = Math.sin((pose.t || 0) * 7 + side) * 1.5 * u;
+        const ex = sx + side * 12 * u, ey = sy - 5 * u;
+        const hx = sx + side * 14 * u + wave * side, hy = sy - 17 * u;
+        g.strokeStyle = LOOK.pole; g.lineWidth = 1.5 * u;
+        g.beginPath(); g.moveTo(hx, hy + 2 * u); g.lineTo(hx + side * 6 * u, hy - 16 * u); g.stroke();
+        g.strokeStyle = LOOK.outline; g.lineWidth = 5.4 * u;
+        g.beginPath(); g.moveTo(sx + side * 7 * u, sy); g.lineTo(ex, ey); g.lineTo(hx, hy); g.stroke();
+        g.strokeStyle = LOOK.skin; g.lineWidth = 3.8 * u;
+        g.beginPath(); g.moveTo(sx + side * 7 * u, sy); g.lineTo(ex, ey); g.lineTo(hx, hy); g.stroke();
+        g.fillStyle = LOOK.skinDark;
+        g.beginPath(); g.arc(hx, hy, 2 * u, 0, Math.PI * 2); g.fill();
+        return;
+      }
       const hx = sx + side * (c ? 9 : 12) * u + fwd * 0.2;
       const hy = sy + (c ? 9 : 11) * u;
       // bâton
@@ -763,9 +778,18 @@
       S.mode = 'finishing';
       // séquence automatique : on garde la direction du joueur pour choisir le côté de la courbe
       const side = S.th >= 0 ? 1 : -1;
-      const yCurve = FINISH + 13, v1 = Math.min(S.v, 45 * KMH);
+      // la courbe finale doit s'arrêter dans le bas de l'aire d'arrivée, au milieu en largeur :
+      // on calcule le chemin parcouru pendant la courbe pour savoir où la commencer
+      const D = 22, thEnd = side * 100 * DEG;
+      let cdx = 0, cdy = 0;
+      for (let i = 0; i < 100; i++) {
+        const q = (i + 0.5) / 100, a = thEnd * q * q * (3 - 2 * q);
+        cdx += Math.sin(a) * D / 100; cdy += Math.cos(a) * D / 100;
+      }
+      const yStop = STOP.y + STOP.r * 0.55;
+      const yCurve = Math.max(FINISH + 13, yStop - cdy), v1 = Math.min(S.v, 45 * KMH);
       S.skidSide = side;
-      S.fin = { side, curving: false, yCurve, v1, dec1: Math.max(0, (S.v * S.v - v1 * v1) / (2 * (yCurve - FINISH))), D: 22, s: 0, stopped: false };
+      S.fin = { side, thEnd, xAim: STOP.x - cdx, curving: false, yCurve, v1, dec1: Math.max(0, (S.v * S.v - v1 * v1) / (2 * (yCurve - FINISH))), D, s: 0, stopped: false };
       S.heavy = false;
       if (window.Sons) Sons.on.finish();
       if (window.Famille) Famille.onRunEnd({ finished: true, time: S.finalTime, splits: S.splits.slice() });
@@ -821,17 +845,16 @@
     const f = S.fin;
     if (!f.curving) {
       // 1) ligne droite vers le centre de l'aire en ralentissant
-      const tgt = Math.max(-0.35, Math.min(0.35, (STOP.x - S.x) * 0.06));
+      const tgt = Math.max(-0.45, Math.min(0.45, (f.xAim - S.x) * 0.06));
       S.th += (tgt - S.th) * (1 - Math.exp(-dt * 3));
       S.v = Math.max(f.v1, S.v - f.dec1 * dt);
       S.y += S.v * Math.cos(S.th) * dt;
       S.x += S.v * Math.sin(S.th) * dt;
       if (S.y >= f.yCurve) {
         f.curving = true; f.th0 = S.th;
-        f.side = S.x > STOP.x + 1 ? -1 : (S.x < STOP.x - 1 ? 1 : f.side);
-        f.thEnd = f.side * 100 * DEG; S.skidSide = f.side;
         f.dec = Math.max(2, (S.v * S.v) / (2 * f.D));
       }
+      finishTrail();
       return;
     }
     // 2) grande courbe de freinage, puis dérapage
@@ -847,12 +870,22 @@
       const n = S.skidding ? Math.round(4 + S.v * 0.8) : (Math.random() < 0.4 ? 1 : 0);
       spray(-f.side, n, S.skidding ? 1.8 : 1);
     }
+    finishTrail();
     if (S.v <= 0.05) {
       if (S.v === 0 && !f.stopped) { f.stopped = true; puff(S.x - f.side * 0.8, S.y + 0.3, 18, 3); }
       S.v = 0;
       S.endTimer += dt;
       if (S.endTimer > 1.4 && !S.endShown) { S.endShown = true; showResults(); }
     }
+  }
+
+  // Pendant la séquence d'arrivée le skieur part en travers : on pose les traces selon la distance
+  // parcourue (et plus selon la descente), pour qu'elles restent figées là où il est passé.
+  function finishTrail() {
+    const last = S.trail[S.trail.length - 1];
+    if (last && Math.hypot(S.x - last.x, S.y - last.y) < 0.4) return;
+    S.trail.push({ x: S.x, y: S.y, th: Math.max(-90 * DEG, Math.min(90 * DEG, S.th)) });
+    if (S.trail.length > 400) S.trail.shift();
   }
 
   function lowerBound(arr, y) {
@@ -944,7 +977,7 @@
           const ox = Math.cos(p.th) * 0.28 * side, oy = -Math.sin(p.th) * 0.28 * side;
           ctx.lineTo(wx(p.x + ox), wy(p.y + oy));
         }
-        ctx.lineTo(wx(S.x + Math.cos(S.th) * 0.28 * side), wy(S.y));
+        if (S.mode === 'race') ctx.lineTo(wx(S.x + Math.cos(S.th) * 0.28 * side), wy(S.y - Math.sin(S.th) * 0.28 * side));
         ctx.stroke();
       }
     }
@@ -1216,6 +1249,7 @@
       plow: input.brake && S.mode === 'race',
       skid: S.mode === 'finishing' && (S.skidding || S.v === 0),
       skidSide: S.skidSide,
+      cheer: (S.mode === 'finishing' || S.mode === 'results') && !!(S.fin && S.fin.stopped),
       fallen: S.mode === 'fallen',
       lift: S.lift, t: S.t
     };
