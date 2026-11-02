@@ -154,10 +154,27 @@ window.Famille = (() => {
     return { html: rows.join(''), rank: me >= 0 ? me + 1 : null, total: ranked.length };
   }
 
+  // V3 : podium des 3 meilleurs temps de la famille sur la page d'accueil (marches 2-1-3)
+  function fillPodium() {
+    const box = $('home-podium');
+    if (!box) return;
+    if (!enabled || !familyCode()) { box.style.display = 'none'; return; }
+    box.style.display = '';
+    const ranked = board.filter((b) => b.meilleur_ms).sort((a, b) => a.meilleur_ms - b.meilleur_ms).slice(0, 3);
+    if (!ranked.length) {
+      box.innerHTML = `<p class="podium-msg">${boardOk ? 'Le podium attend ses premiers champions !' : 'Podium indisponible pour le moment.'}</p>`;
+      return;
+    }
+    box.innerHTML = [1, 0, 2].map((i) => {
+      const b = ranked[i];
+      return `<div class="p p${i + 1}${b ? '' : ' empty'}"><span class="nm">${b ? esc(b.prenom) : '…'}</span>` +
+        `<span class="tm">${b ? fmtMs(b.meilleur_ms) : '--'}</span><span class="st">${i + 1}</span></div>`;
+    }).join('');
+  }
+
   function updateHome() {
+    fillPodium();
     if (!enabled) return;
-    const ref = reference();
-    $('home-record').textContent = ref ? `Record : ${ref.prenom} ${fmtMs(ref.ms)}` : '';
     $('home-code-row').style.display = familyCode() ? 'none' : '';
     $('home-change-code').style.display = familyCode() ? '' : 'none';
   }
@@ -236,7 +253,7 @@ window.Famille = (() => {
 
   function init() {
     if (!enabled) {
-      for (const id of ['home-player', 'home-record', 'home-board-btn', 'res-family', 'home-change-code']) { const el = $(id); if (el) el.style.display = 'none'; }
+      for (const id of ['home-player', 'home-podium', 'home-board-btn', 'res-family', 'home-change-code']) { const el = $(id); if (el) el.style.display = 'none'; }
       return;
     }
     const inName = $('in-prenom');

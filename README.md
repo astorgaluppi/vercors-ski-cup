@@ -31,6 +31,9 @@ Nouveautés de la V3 :
   zigzag d'un bord à l'autre à 8 km/h ; toucher l'un des 9 skieurs fait tomber.
 - **Champs de bosses en passages** : rangées serrées avec une seule ouverture qui change de côté à chaque rangée,
   impossible de passer tout droit.
+- **Page d'accueil** : logo du jeu, podium des 3 meilleurs temps de la famille (or, argent, bronze), ombre chinoise
+  du Vercors en fond, musique d'attente fabriquée par le jeu (au premier toucher, coupée au départ ou avec 🔊) et,
+  sur les grands écrans, une bande où le skieur remonte au tire-fesses.
 - Arrivée : traces figées, arrêt dans le bas de l'aire d'arrivée, bras levés une fois arrêté. Bruitages plus doux.
 
 ## Fichiers
@@ -39,7 +42,9 @@ Nouveautés de la V3 :
 - `js/piste.js` : le fichier de tronçons (tracé de la piste, champs de bosses, chasse-neige, école de ski, plaques de terre)
 - `js/game.js` : le jeu (physique, dessins, commandes) ; réglages en haut du fichier (`CFG`)
 - `js/sons.js` : les bruitages (Web Audio)
-- `js/famille.js` : prénom, code famille et classement
+- `js/famille.js` : prénom, code famille, classement et podium
+- `js/accueil.js` : page d'accueil (musique au premier toucher, bande du tire-fesses)
+- `img/logo-titre.png` : le logo (fond rendu transparent)
 - `supabase/scores.sql` : script à lancer une fois dans Supabase (SQL Editor) pour créer la base des scores
 - `supabase/v3-skis.sql` : mise à jour V3 de la base (enregistre la paire de skis du record), sans rien effacer
 - `manifest.webmanifest`, `sw.js`, `icons/` : installation sur l'écran d'accueil et jeu hors connexion

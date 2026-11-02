@@ -1507,6 +1507,7 @@
   };
   function showScreen(name) {
     for (const [k, el] of Object.entries(screens)) el.classList.toggle('visible', k === name);
+    document.body.classList.toggle('accueil', name === 'home');
     if (name === null) S.endShown = false;
   }
   function showResults() {
@@ -1634,7 +1635,7 @@
     S.particles = []; S.trail = [];
     S.camX = S.x; S.camY = S.y - viewH() * CFG.skierScreenFrac;
     showScreen('home');
-    if (window.Sons) Sons.on.stop();
+    if (window.Sons) { Sons.on.stop(); Sons.music(true); }
     if (window.Famille) Famille.updateHome();
   }
 
