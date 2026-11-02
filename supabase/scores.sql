@@ -1,5 +1,6 @@
 -- Pas Très Pentu Ski Cup : base des scores (V2). À coller dans Supabase > SQL Editor, puis Run.
 -- Avant de lancer : remplacer NEIGE2026 (plus bas) par le code famille choisi.
+-- V3 : sur une base déjà en place, lancer seulement v3-skis.sql (il garde les records). Sur une base neuve, lancer ce fichier puis v3-skis.sql.
 drop function if exists classement(text);
 drop function if exists enregistrer_descente(text, text, integer, integer, integer);
 drop table if exists scores;

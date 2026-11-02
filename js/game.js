@@ -1,4 +1,4 @@
-// Pas Très Pentu Ski Cup — V2
+// Pas Très Pentu Ski Cup — V3
 // Jeu 2D en Canvas, sans dépendance. Le skieur est en haut de l'écran,
 // la piste défile vers le haut et les obstacles arrivent par le bas.
 (() => {
@@ -43,6 +43,17 @@
   };
 
   const P = window.PISTE_V1;
+
+  // V3 : les trois paires de skis (vitesse max en schuss, vitesse min en chasse-neige, adhérence dans les virages)
+  const SKIS = [
+    { id: 'rhea', nom: 'Tante Rhéa', devise: 'rustique mais efficace', max: 75, min: 5, grip: 1.3,
+      look: { ski: '#b5793a', skiTip: '#7a4a1e' } },
+    { id: 'bec', nom: 'Madame Bec', devise: 'hors de prix mais plutôt polyvalent', max: 90, min: 10, grip: 1,
+      look: { ski: '#e53935', skiTip: '#ffca28' } },
+    { id: 'fourcade', nom: 'Père Fourcade', devise: 'le haut de gamme mais ils se méritent…', max: 100, min: 15, grip: 0.8,
+      look: { ski: '#15171c', skiTip: '#00e5ff' } }
+  ];
+  let ski = SKIS[1]; // Madame Bec présélectionné
   const FINISH = P.longueur;
 
   // ---------- Hasard déterministe (même décor pour tous) ----------
@@ -165,6 +176,54 @@
     const ext = (CFG.plowW / 2) * Math.cos(phi) + (CFG.plowL / 2) * Math.abs(Math.sin(phi));
     return { x: c + e.cote * (hw - ext - 0.2), y: e.y, phi };
   });
+
+  // V3 : école de ski. Le chemin du moniteur est calculé d'avance (zigzag arrondi d'un bord à l'autre),
+  // avec sa longueur, pour avancer à vitesse constante ; les enfants suivent le même chemin, en file.
+  const ECOLE = (() => {
+    const E = P.ecoleDeSki;
+    if (!E) return null;
+    const pts = [], n = 2400, turns = 12; // 12 traversées, bien plus que nécessaire
+    let len = 0, px = 0, py = 0;
+    for (let i = 0; i <= n; i++) {
+      const ph = i / n * turns * Math.PI;
+      const y = E.debut + E.descente * ph / Math.PI;
+      const x = TRACK.center(y) - Math.cos(ph) * (TRACK.halfW(y) - E.marge);
+      if (i) len += Math.hypot(x - px, y - py);
+      pts.push({ x, y, s: len });
+      px = x; py = y;
+    }
+    const at = (sv) => {
+      sv = Math.max(0, Math.min(len - 0.01, sv));
+      let lo = 0, hi = pts.length - 1;
+      while (hi - lo > 1) { const m = (lo + hi) >> 1; if (pts[m].s <= sv) lo = m; else hi = m; }
+      const a = pts[lo], b = pts[hi], t = (sv - a.s) / Math.max(1e-6, b.s - a.s);
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, th: Math.atan2(b.x - a.x, b.y - a.y) };
+    };
+    const kidCols = ['#fdd835', '#43a047', '#1e88e5', '#fb8c00', '#8e24aa', '#00acc1', '#f06292', '#7cb342'];
+    const helmets = ['#1e88e5', '#e53935', '#fdd835', '#ffffff', '#43a047', '#f06292', '#fb8c00', '#212121'];
+    const skins = ['#f1c27d', '#e0ac69', '#8d5524', '#c68642', '#ffdbac', '#a0673a'];
+    const members = [];
+    for (let i = 0; i < 9; i++) {
+      const kid = i > 0;
+      const sk = skins[(i * 5) % skins.length];
+      members.push({
+        kid, r: kid ? 0.8 : 1.0, px: kid ? 34 : 48,
+        look: kid
+          ? { jersey: kidCols[i - 1], jerseyDark: kidCols[i - 1], trim: '#ffffff', helmet: helmets[i - 1], noNumber: true,
+              skin: sk, skinDark: sk, ski: kidCols[(i + 2) % 8], skiTip: '#ffffff' }
+          : { jersey: '#d32f2f', jerseyDark: '#9a1f1f', trim: '#ffffff', helmet: '#b71c1c', noNumber: true,
+              skin: '#e0ac69', skinDark: '#c68642', ski: '#212121', skiTip: '#d32f2f' }
+      });
+    }
+    return {
+      E, members,
+      // positions des 9 skieurs au temps t (s) depuis la mise en route
+      positions(t) {
+        const lead = (members.length - 1) * E.ecart + E.vitesse * KMH * t;
+        return members.map((m, i) => Object.assign({ m }, at(lead - i * E.ecart)));
+      }
+    };
+  })();
 
   // V2 : neige lourde et plaques de terre
   const HEAVY = P.neigeLourde || null;
@@ -303,6 +362,7 @@
   // pose : { theta, crouch 0..1, plow, skid, fallen, lift, t }
   function drawSkier(g, x, y, hPx, pose) {
     const u = hPx / 52;
+    const L = pose.look ? Object.assign({}, LOOK, pose.look) : LOOK;
     g.save();
     g.translate(x, y);
     g.lineJoin = 'round'; g.lineCap = 'round';
@@ -317,11 +377,11 @@
     // skis
     const ski = (fx, ang) => {
       const dx = Math.sin(ang), dy = Math.cos(ang);
-      g.strokeStyle = LOOK.outline; g.lineWidth = 5.2 * u;
+      g.strokeStyle = L.outline; g.lineWidth = 5.2 * u;
       g.beginPath(); g.moveTo(fx - dx * 12 * u, -dy * 12 * u); g.lineTo(fx + dx * 19 * u, dy * 19 * u); g.stroke();
-      g.strokeStyle = LOOK.ski; g.lineWidth = 3.4 * u;
+      g.strokeStyle = L.ski; g.lineWidth = 3.4 * u;
       g.beginPath(); g.moveTo(fx - dx * 12 * u, -dy * 12 * u); g.lineTo(fx + dx * 16 * u, dy * 16 * u); g.stroke();
-      g.strokeStyle = LOOK.skiTip;
+      g.strokeStyle = L.skiTip;
       g.beginPath(); g.moveTo(fx + dx * 16 * u, dy * 16 * u); g.lineTo(fx + dx * 19 * u, dy * 19 * u); g.stroke();
     };
     let aL = th, aR = th;
@@ -342,36 +402,36 @@
 
     // chaussures (grosses)
     const boot = (bx) => {
-      g.fillStyle = LOOK.outline;
+      g.fillStyle = L.outline;
       roundRect(g, bx - 5.6 * u, -9.6 * u, 11.2 * u, 11 * u, 3 * u); g.fill();
-      g.fillStyle = LOOK.boot;
+      g.fillStyle = L.boot;
       roundRect(g, bx - 4.6 * u, -8.6 * u, 9.2 * u, 9 * u, 2.5 * u); g.fill();
-      g.fillStyle = LOOK.bootLight;
+      g.fillStyle = L.bootLight;
       roundRect(g, bx - 3.6 * u, -8 * u, 3 * u, 6 * u, 1.5 * u); g.fill();
-      g.fillStyle = LOOK.buckle;
+      g.fillStyle = L.buckle;
       g.fillRect(bx - 4 * u, -6 * u, 8 * u, 1.1 * u);
       g.fillRect(bx - 4 * u, -3.4 * u, 8 * u, 1.1 * u);
     };
     // jambes
     const leg = (fx) => {
       const kx = fx * 0.9 + bodyX * 0.5 + (c ? fx * 0.25 : 0);
-      g.strokeStyle = LOOK.outline; g.lineWidth = 6.2 * u;
+      g.strokeStyle = L.outline; g.lineWidth = 6.2 * u;
       g.beginPath(); g.moveTo(fx, -8 * u); g.lineTo(kx, -8 * u - legH * 0.5); g.lineTo(bodyX + fx * 0.6, hipY); g.stroke();
-      g.strokeStyle = LOOK.skin; g.lineWidth = 4.4 * u;
+      g.strokeStyle = L.skin; g.lineWidth = 4.4 * u;
       g.beginPath(); g.moveTo(fx, -8 * u); g.lineTo(kx, -8 * u - legH * 0.5); g.lineTo(bodyX + fx * 0.6, hipY); g.stroke();
     };
     leg(-spread * u); leg(spread * u);
     boot(-spread * u); boot(spread * u);
 
     // short de basket
-    g.fillStyle = LOOK.outline;
+    g.fillStyle = L.outline;
     roundRect(g, bodyX - 9 * u, hipY - 6.5 * u, 18 * u, 10.5 * u, 2.5 * u); g.fill();
-    g.fillStyle = LOOK.jersey;
+    g.fillStyle = L.jersey;
     roundRect(g, bodyX - 8 * u, hipY - 5.5 * u, 16 * u, 8.5 * u, 2 * u); g.fill();
-    g.fillStyle = LOOK.trim;
+    g.fillStyle = L.trim;
     g.fillRect(bodyX - 8 * u, hipY + 1.6 * u, 3 * u, 1.2 * u);
     g.fillRect(bodyX + 5 * u, hipY + 1.6 * u, 3 * u, 1.2 * u);
-    g.fillStyle = LOOK.jerseyDark;
+    g.fillStyle = L.jerseyDark;
     g.fillRect(bodyX - 0.5 * u, hipY - 1 * u, 1 * u, 4 * u);
 
     // bras + bâtons (derrière le buste d'un côté, devant de l'autre : simple)
@@ -382,46 +442,46 @@
         const wave = Math.sin((pose.t || 0) * 7 + side) * 1.5 * u;
         const ex = sx + side * 12 * u, ey = sy - 5 * u;
         const hx = sx + side * 14 * u + wave * side, hy = sy - 17 * u;
-        g.strokeStyle = LOOK.pole; g.lineWidth = 1.5 * u;
+        g.strokeStyle = L.pole; g.lineWidth = 1.5 * u;
         g.beginPath(); g.moveTo(hx, hy + 2 * u); g.lineTo(hx + side * 6 * u, hy - 16 * u); g.stroke();
-        g.strokeStyle = LOOK.outline; g.lineWidth = 5.4 * u;
+        g.strokeStyle = L.outline; g.lineWidth = 5.4 * u;
         g.beginPath(); g.moveTo(sx + side * 7 * u, sy); g.lineTo(ex, ey); g.lineTo(hx, hy); g.stroke();
-        g.strokeStyle = LOOK.skin; g.lineWidth = 3.8 * u;
+        g.strokeStyle = L.skin; g.lineWidth = 3.8 * u;
         g.beginPath(); g.moveTo(sx + side * 7 * u, sy); g.lineTo(ex, ey); g.lineTo(hx, hy); g.stroke();
-        g.fillStyle = LOOK.skinDark;
+        g.fillStyle = L.skinDark;
         g.beginPath(); g.arc(hx, hy, 2 * u, 0, Math.PI * 2); g.fill();
         return;
       }
       const hx = sx + side * (c ? 9 : 12) * u + fwd * 0.2;
       const hy = sy + (c ? 9 : 11) * u;
       // bâton
-      g.strokeStyle = LOOK.pole; g.lineWidth = 1.5 * u;
+      g.strokeStyle = L.pole; g.lineWidth = 1.5 * u;
       const px = hx + side * (c ? 6 : 3) * u, py = hy + (c ? -2 : 13) * u;
       const ex = c ? hx + side * 14 * u : px, ey = c ? hy - 12 * u : py;
       g.beginPath(); g.moveTo(hx, hy); g.lineTo(ex, ey); g.stroke();
       if (!c) { g.beginPath(); g.ellipse(px, py, 2.4 * u, 1 * u, 0, 0, Math.PI * 2); g.stroke(); }
       // bras
-      g.strokeStyle = LOOK.outline; g.lineWidth = 5.4 * u;
+      g.strokeStyle = L.outline; g.lineWidth = 5.4 * u;
       g.beginPath(); g.moveTo(sx + side * 7 * u, sy); g.lineTo(sx + side * 10.5 * u, sy + 6 * u); g.lineTo(hx, hy); g.stroke();
-      g.strokeStyle = LOOK.skin; g.lineWidth = 3.8 * u;
+      g.strokeStyle = L.skin; g.lineWidth = 3.8 * u;
       g.beginPath(); g.moveTo(sx + side * 7 * u, sy); g.lineTo(sx + side * 10.5 * u, sy + 6 * u); g.lineTo(hx, hy); g.stroke();
-      g.fillStyle = LOOK.skinDark;
+      g.fillStyle = L.skinDark;
       g.beginPath(); g.arc(hx, hy, 2 * u, 0, Math.PI * 2); g.fill();
     };
     arm(-1); arm(1);
 
     // débardeur
     const ty = shoulderY, tb = hipY - 4 * u;
-    g.fillStyle = LOOK.outline;
+    g.fillStyle = L.outline;
     g.beginPath();
     g.moveTo(sx - 8.6 * u, ty - 1 * u); g.lineTo(sx + 8.6 * u, ty - 1 * u);
     g.lineTo(sx + 8.2 * u, tb + 1 * u); g.lineTo(sx - 8.2 * u, tb + 1 * u); g.closePath(); g.fill();
-    g.fillStyle = LOOK.jersey;
+    g.fillStyle = L.jersey;
     g.beginPath();
     g.moveTo(sx - 7.5 * u, ty); g.lineTo(sx - 4 * u, ty); g.lineTo(sx, ty + 3.4 * u); g.lineTo(sx + 4 * u, ty); g.lineTo(sx + 7.5 * u, ty);
     g.lineTo(sx + 7.2 * u, tb); g.lineTo(sx - 7.2 * u, tb); g.closePath(); g.fill();
     // liseré col et emmanchures
-    g.strokeStyle = LOOK.trim; g.lineWidth = 1.1 * u;
+    g.strokeStyle = L.trim; g.lineWidth = 1.1 * u;
     g.beginPath(); g.moveTo(sx - 4 * u, ty); g.lineTo(sx, ty + 3.4 * u); g.lineTo(sx + 4 * u, ty); g.stroke();
     g.beginPath(); g.moveTo(sx - 7.4 * u, ty + 0.5 * u); g.quadraticCurveTo(sx - 5.5 * u, ty + 4 * u, sx - 7.3 * u, ty + 7 * u); g.stroke();
     g.beginPath(); g.moveTo(sx + 7.4 * u, ty + 0.5 * u); g.quadraticCurveTo(sx + 5.5 * u, ty + 4 * u, sx + 7.3 * u, ty + 7 * u); g.stroke();
@@ -429,20 +489,22 @@
     const nH = Math.max(6, (tb - ty) - 5 * u);
     g.font = `900 ${nH}px "Arial Black", "Helvetica Neue", Arial, sans-serif`;
     g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.lineWidth = 1.6 * u; g.strokeStyle = LOOK.jerseyDark;
+    g.lineWidth = 1.6 * u; g.strokeStyle = L.jerseyDark;
     const ny = ty + 3.6 * u + (tb - ty - 3.6 * u) / 2;
-    g.strokeText('9', sx, ny);
-    g.fillStyle = LOOK.number;
-    g.fillText('9', sx, ny);
+    if (!L.noNumber) {
+      g.strokeText('9', sx, ny);
+      g.fillStyle = L.number;
+      g.fillText('9', sx, ny);
+    }
 
     // cou + tête chauve
-    g.fillStyle = LOOK.skinDark;
+    g.fillStyle = L.skinDark;
     g.fillRect(sx - 2.2 * u, ty - 3 * u, 4.4 * u, 3.6 * u);
     const hx = sx + Math.sin(th) * 1.5 * u, hy = ty - 8.6 * u;
-    g.fillStyle = LOOK.outline;
+    g.fillStyle = L.outline;
     g.beginPath(); g.ellipse(hx, hy, 6.8 * u, 7.4 * u, 0, 0, Math.PI * 2); g.fill();
     // oreilles
-    g.fillStyle = LOOK.skin;
+    g.fillStyle = L.skin;
     g.beginPath(); g.ellipse(hx - 6.2 * u, hy + 0.5 * u, 1.6 * u, 2.2 * u, 0, 0, Math.PI * 2); g.fill();
     g.beginPath(); g.ellipse(hx + 6.2 * u, hy + 0.5 * u, 1.6 * u, 2.2 * u, 0, 0, Math.PI * 2); g.fill();
     g.beginPath(); g.ellipse(hx, hy, 5.8 * u, 6.5 * u, 0, 0, Math.PI * 2); g.fill();
@@ -462,6 +524,15 @@
     g.beginPath(); g.moveTo(hx + 0.9 * u, hy - 1.9 * u); g.lineTo(hx + 2.4 * u, hy - 1.6 * u); g.stroke();
     g.fillStyle = '#fff';
     g.beginPath(); g.moveTo(hx - 2.2 * u, hy + 3 * u); g.quadraticCurveTo(hx, hy + 5.4 * u, hx + 2.2 * u, hy + 3 * u); g.closePath(); g.fill();
+    if (L.helmet) {
+      // casque (ou bonnet) des skieurs de l'école de ski
+      g.fillStyle = L.outline;
+      g.beginPath(); g.ellipse(hx, hy - 1.2 * u, 7.3 * u, 6.9 * u, 0, Math.PI, 0); g.closePath(); g.fill();
+      g.fillStyle = L.helmet;
+      g.beginPath(); g.ellipse(hx, hy - 1.2 * u, 6.4 * u, 6.1 * u, 0, Math.PI, 0); g.closePath(); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.35)';
+      g.beginPath(); g.ellipse(hx - 2.2 * u, hy - 4.6 * u, 2 * u, 1.1 * u, -0.4, 0, Math.PI * 2); g.fill();
+    }
     g.restore();
   }
 
@@ -619,7 +690,7 @@
       gateOpen: 0, announced: {}, fallReason: ''
     });
     S.camX = S.x; S.camY = S.y - viewH() * CFG.skierScreenFrac;
-    S.lastBeep = null; S.heavy = false; S.turnAmt = 0;
+    S.lastBeep = null; S.heavy = false; S.turnAmt = 0; S.schoolT = 0;
     S.ref = window.Famille ? Famille.reference() : null; // record de la famille au départ
     input.keys.clear(); input.touch = null;
     showScreen(null);
@@ -643,7 +714,7 @@
     S.v *= reason === 'arbre' || reason === 'engin' ? 0.15 : 0.5;
     puff(S.x, S.y, 26, 6);
     if (window.Sons) Sons.on.fall(reason);
-    if (window.Famille) Famille.onRunEnd({ finished: false });
+    if (window.Famille) Famille.onRunEnd({ ski: ski.id, finished: false });
   }
 
   function puff(x, y, n, spd) {
@@ -685,6 +756,7 @@
     if (S.gateOpen > 0 && S.gateOpen < 1) S.gateOpen = Math.min(1, S.gateOpen + dt * 3);
     if (S.mode === 'race' && S.countdown > -1) S.countdown -= dt;
 
+    if (ECOLE && S.y >= ECOLE.E.depart && (S.mode === 'race' || S.mode === 'fallen')) S.schoolT += dt;
     if (S.mode === 'race') raceStep(dt);
     else if (S.mode === 'finishing') finishStep(dt);
     else if (S.mode === 'fallen') {
@@ -719,6 +791,11 @@
         showBanner('Champ de bosses !');
       }
     }
+    if (ECOLE && !S.announced.ecole && (S.mode === 'race' || S.mode === 'countdown')) {
+      const ks = ECOLE.positions(S.schoolT || 0);
+      const top = Math.min(...ks.map((k) => k.y)), bot = Math.max(...ks.map((k) => k.y));
+      if (bottom >= top - 1 && S.y < bot) { S.announced.ecole = true; showBanner('Le moniteur de ski !'); }
+    }
     if (HEAVY && !S.announced.heavy && bottom >= HEAVY.debut - 1 && S.y < HEAVY.fin && (S.mode === 'race' || S.mode === 'countdown')) {
       S.announced.heavy = true;
       showBanner('La soupe et les cailloux !');
@@ -730,9 +807,9 @@
     // virage : vitesse de rotation = a / v (rayon R = v² / a)
     const heavy = inHeavy(S.y);
     S.heavy = heavy;
-    const grip = CFG.grip * (input.brake ? CFG.brakeGripMul : 1) * (heavy ? CFG.heavyGripMul : 1);
+    const grip = CFG.grip * ski.grip * (input.brake ? CFG.brakeGripMul : 1) * (heavy ? CFG.heavyGripMul : 1);
     const target = input.steer * CFG.maxAngle;
-    const omega = Math.min(CFG.maxTurnRate, grip / Math.max(S.v, 0.5));
+    const omega = Math.min(CFG.maxTurnRate * ski.grip, grip / Math.max(S.v, 0.5));
     const d = target - S.th;
     const dth = Math.sign(d) * Math.min(Math.abs(d), omega * dt);
     S.th += dth;
@@ -742,11 +819,12 @@
     // vitesse (en neige lourde, les vitesses maximales baissent)
     const cos = Math.cos(S.th);
     const hv = heavy ? CFG.heavySpeedMul : 1;
+    const brakeMin = ski.min * KMH;
     if (input.brake) {
-      if (S.v > CFG.brakeMin) S.v = Math.max(CFG.brakeMin, S.v - CFG.brakeDec * dt);
-      else S.v = Math.min(CFG.brakeMin, S.v + CFG.slopeAcc * cos * dt);
+      if (S.v > brakeMin) S.v = Math.max(brakeMin, S.v - CFG.brakeDec * dt);
+      else S.v = Math.min(brakeMin, S.v + CFG.slopeAcc * cos * dt);
     } else if (input.tuck) {
-      const cap = CFG.schussMax * hv;
+      const cap = ski.max * KMH * hv;
       if (S.v < cap) S.v = Math.min(cap, S.v + CFG.schussAcc * cos * dt);
       else S.v = Math.max(cap, S.v - CFG.heavyDec * dt);
     } else {
@@ -778,7 +856,7 @@
       S.mode = 'timeout';
       showScreen('timeout');
       if (window.Sons) Sons.on.timeout();
-      if (window.Famille) Famille.onRunEnd({ finished: false });
+      if (window.Famille) Famille.onRunEnd({ ski: ski.id, finished: false });
       return;
     }
 
@@ -803,7 +881,7 @@
       S.fin = { side, thEnd, xAim: STOP.x - cdx, curving: false, yCurve, v1, dec1: Math.max(0, (S.v * S.v - v1 * v1) / (2 * (yCurve - FINISH))), D, s: 0, stopped: false };
       S.heavy = false;
       if (window.Sons) Sons.on.finish();
-      if (window.Famille) Famille.onRunEnd({ finished: true, time: S.finalTime, splits: S.splits.slice() });
+      if (window.Famille) Famille.onRunEnd({ ski: ski.id, finished: true, time: S.finalTime, splits: S.splits.slice() });
       return;
     }
 
@@ -818,6 +896,13 @@
       const along = dx * Math.sin(e.phi) + dy * Math.cos(e.phi);
       const across = dx * Math.cos(e.phi) - dy * Math.sin(e.phi);
       if (Math.abs(across) < CFG.plowW / 2 + CFG.plowMargin && Math.abs(along) < CFG.plowL / 2 + CFG.plowMargin) { fall('engin'); return; }
+    }
+
+    // école de ski : toucher le moniteur ou un enfant fait tomber
+    if (ECOLE) {
+      for (const k of ECOLE.positions(S.schoolT || 0)) {
+        if (Math.abs(k.y - S.y) < 2 && Math.hypot(k.x - S.x, k.y - S.y) < k.m.r) { fall('ecole'); return; }
+      }
     }
 
     // plaques de terre : chute à n'importe quelle vitesse
@@ -847,7 +932,7 @@
       S.lastTrailY = S.y;
       if (S.trail.length > 260) S.trail.shift();
     }
-    if (input.brake && S.v > CFG.brakeMin + 0.5) { if (Math.random() < 0.7) { spray(-1, 1); spray(1, 1); } }
+    if (input.brake && S.v > ski.min * KMH + 0.5) { if (Math.random() < 0.7) { spray(-1, 1); spray(1, 1); } }
     if (Math.abs(target - S.th) > 0.3 && S.v > 12 && Math.random() < 0.5) spray(Math.sign(S.th) || 1, 1);
   }
 
@@ -1025,6 +1110,12 @@
       for (const p of crowd) items.push({ y: p.y, draw: () => drawPerson(p) });
     }
     for (const e of plows) if (e.y > yTop - 12 && e.y < yBot + 12) items.push({ y: e.y, draw: () => drawPlow(e) });
+    if (ECOLE && S.mode !== 'home') {
+      for (const k of ECOLE.positions(S.schoolT || 0)) {
+        if (k.y < yTop - 6 || k.y > yBot + 6) continue;
+        items.push({ y: k.y, draw: () => drawSkier(ctx, wx(k.x), wy(k.y), k.m.px, { theta: k.th, plow: k.m.kid, look: k.m.look, t: S.t }) });
+      }
+    }
     items.push({ y: S.y, draw: drawPlayer });
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
@@ -1258,6 +1349,7 @@
       theta: S.th,
       crouch: input.tuck && S.mode === 'race' ? 1 : 0,
       plow: input.brake && S.mode === 'race',
+      look: ski.look,
       skid: S.mode === 'finishing' && (S.skidding || S.v === 0),
       skidSide: S.skidSide,
       cheer: (S.mode === 'finishing' || S.mode === 'results') && !!(S.fin && S.fin.stopped),
@@ -1410,7 +1502,8 @@
     fall: document.getElementById('screen-fall'),
     timeout: document.getElementById('screen-timeout'),
     results: document.getElementById('screen-results'),
-    board: document.getElementById('screen-board')
+    board: document.getElementById('screen-board'),
+    skis: document.getElementById('screen-skis')
   };
   function showScreen(name) {
     for (const [k, el] of Object.entries(screens)) el.classList.toggle('visible', k === name);
@@ -1434,12 +1527,105 @@
     if (window.Famille) Famille.fillResults();
     showScreen('results');
   }
+  // « Jouer » (accueil, classement) : on passe d'abord par le choix des skis.
+  // « Rejouer » repart tout de suite avec la même paire ; « Changer de skis » rouvre le choix.
   function play() {
     if (window.Famille && !Famille.canPlay()) return;
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    if (window.Sons) Sons.unlock();
+    openSkis();
+  }
+  function replay() {
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     resetRace();
   }
+
+  // ---------- V3 : choix des skis ----------
+  function drawSkiPair(c, model) {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = c.clientWidth || 54, h = c.clientHeight || 120;
+    c.width = w * dpr; c.height = h * dpr;
+    const g = c.getContext('2d');
+    g.scale(dpr, dpr);
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    const one = (cx) => {
+      const sw = w * 0.3, top = 6, bot = h - 4;
+      // planche avec spatule arrondie en haut
+      const path = () => {
+        g.beginPath();
+        g.moveTo(cx - sw / 2, bot);
+        g.lineTo(cx - sw / 2, top + sw * 0.9);
+        g.quadraticCurveTo(cx - sw / 2, top, cx, top);
+        g.quadraticCurveTo(cx + sw / 2, top, cx + sw / 2, top + sw * 0.9);
+        g.lineTo(cx + sw / 2, bot);
+        g.closePath();
+      };
+      path(); g.fillStyle = '#16202e'; g.fill();
+      g.save(); g.translate(cx, (top + bot) / 2); g.scale(0.78, 0.97); g.translate(-cx, -(top + bot) / 2);
+      path();
+      if (model.id === 'rhea') {
+        g.fillStyle = '#b5793a'; g.fill(); g.clip();
+        g.strokeStyle = 'rgba(90,50,20,0.55)'; g.lineWidth = 1;
+        for (let k = -2; k <= 2; k++) { g.beginPath(); g.moveTo(cx + k * sw * 0.16, top); g.bezierCurveTo(cx + k * sw * 0.16 + 3, h * 0.4, cx + k * sw * 0.16 - 3, h * 0.6, cx + k * sw * 0.16, bot); g.stroke(); }
+      } else if (model.id === 'bec') {
+        g.fillStyle = '#e53935'; g.fill(); g.clip();
+        g.fillStyle = '#ffca28'; g.fillRect(cx - sw, top, sw * 2, sw * 0.9);
+        g.fillStyle = '#ffffff'; g.fillRect(cx - sw, h * 0.62, sw * 2, 3);
+      } else {
+        g.fillStyle = '#15171c'; g.fill(); g.clip();
+        g.fillStyle = '#00e5ff'; g.fillRect(cx - 1.5, top, 3, bot - top);
+        g.fillStyle = '#ff2e88'; g.fillRect(cx - sw, top + sw * 0.6, sw * 2, 2.5);
+        g.fillStyle = '#ff2e88'; g.fillRect(cx - sw, bot - 14, sw * 2, 2.5);
+      }
+      g.restore();
+      // fixation
+      const fy = h * 0.55;
+      if (model.id === 'rhea') {
+        g.fillStyle = '#5a3a1c'; g.fillRect(cx - sw / 2 - 1, fy - 6, sw + 2, 4); g.fillRect(cx - sw / 2 - 1, fy + 4, sw + 2, 4);
+        g.fillStyle = '#9aa3ad'; g.fillRect(cx - sw * 0.3, fy - 9, sw * 0.6, 3);
+      } else {
+        g.fillStyle = model.id === 'fourcade' ? '#00e5ff' : '#2b2f36';
+        g.fillRect(cx - sw * 0.38, fy - 9, sw * 0.76, 6);
+        g.fillRect(cx - sw * 0.38, fy + 6, sw * 0.76, 6);
+        g.fillStyle = '#c9ced6'; g.fillRect(cx - sw * 0.2, fy - 2, sw * 0.4, 8);
+      }
+    };
+    g.clearRect(0, 0, w, h);
+    one(w * 0.3); one(w * 0.7);
+  }
+
+  function skiStats() {
+    const box = document.getElementById('ski-stats');
+    const grip = Math.round((ski.grip - 1) * 100);
+    const row = (label, frac, text) => `<span>${label}</span><span class="bar" title="${text}"><span style="width:${Math.round(frac * 100)}%"></span></span>` +
+      `<span></span><span class="ski-model">${text}</span>`;
+    box.innerHTML =
+      row('Vitesse', (ski.max - 60) / 45, `${ski.max} km/h en schuss`) +
+      row('Freinage', (20 - ski.min) / 17, `chasse-neige jusqu'à ${ski.min} km/h`) +
+      row('Virages', (ski.grip - 0.6) / 0.8, grip ? `adhérence ${grip > 0 ? '+' : '−'}${Math.abs(grip)} %` : 'adhérence de référence');
+  }
+
+  function openSkis() {
+    const list = document.getElementById('ski-list');
+    if (!list.children.length) {
+      list.innerHTML = SKIS.map((k) => `<button class="ski-card" type="button" data-ski="${k.id}"><canvas aria-hidden="true"></canvas><b>${k.nom}</b><i>${k.devise}</i></button>`).join('');
+      list.querySelectorAll('.ski-card').forEach((b) => b.addEventListener('click', () => {
+        ski = SKIS.find((k) => k.id === b.dataset.ski) || ski;
+        list.querySelectorAll('.ski-card').forEach((x) => x.classList.toggle('sel', x === b));
+        skiStats();
+      }));
+    }
+    showScreen('skis');
+    list.querySelectorAll('.ski-card').forEach((b) => {
+      b.classList.toggle('sel', b.dataset.ski === ski.id);
+      drawSkiPair(b.querySelector('canvas'), SKIS.find((k) => k.id === b.dataset.ski));
+    });
+    skiStats();
+  }
+  document.getElementById('ski-go').addEventListener('click', replay);
   document.querySelectorAll('[data-action="play"]').forEach((b) => b.addEventListener('click', play));
+  document.querySelectorAll('[data-action="replay"]').forEach((b) => b.addEventListener('click', replay));
+  document.querySelectorAll('[data-action="skis"]').forEach((b) => b.addEventListener('click', openSkis));
   document.querySelectorAll('[data-action="home"]').forEach((b) => b.addEventListener('click', goHome));
 
   function goHome() {
@@ -1507,5 +1693,5 @@
   requestAnimationFrame(frame);
 
   // Accès pour les tests automatiques et le dessin des icônes
-  window.PTPSC = { drawSkier, state: S, input, track: TRACK, bumps, plows, muds, cfg: CFG, step, fmt, resetRace, goHome, showScreen };
+  window.PTPSC = { drawSkier, state: S, input, track: TRACK, bumps, plows, muds, ecole: ECOLE, skis: SKIS, setSki: (id) => { ski = SKIS.find((k) => k.id === id) || ski; }, cfg: CFG, step, fmt, resetRace, goHome, showScreen };
 })();
