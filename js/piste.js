@@ -23,12 +23,11 @@ window.PISTE_V1 = {
     { longueur: 200, angle: 0 }      // ligne droite d'arrivée + aire d'arrêt
   ],
   champsDeBosses: [
-    // ecartRangs / ecartBosses : distance entre deux rangées et entre deux bosses d'une rangée (m)
-    // V3 — champs en « passages » : rangées de bosses serrées avec un seul passage par rangée,
-    // largeurPassage (m) de large, centré à tour de rôle sur chaque valeur de passages (m depuis le milieu,
-    // négatif = à gauche). Le passage change de côté à chaque rangée : impossible de passer tout droit.
-    { debut: 300,  longueur: 50,  ecartRangs: 12.5, ecartBosses: 1.5, largeurPassage: 6, passages: [-3.5, 3.5] },  // premier champ, plus facile
-    { debut: 1000, longueur: 50,  ecartRangs: 12.5, ecartBosses: 1.5, largeurPassage: 6, passages: [-3.5, 3.5] }
+    // V3.1 — bosses réparties au hasard (le même pour tous) et isolées : nombre de bosses, ecartMin = distance
+    // minimale entre deux bosses (m). couloirs : la piste est découpée en bandes verticales qui reçoivent chacune
+    // au moins une bosse, pour qu'on ne puisse pas traverser un champ tout droit.
+    { debut: 200,  longueur: 50,  nombre: 20, ecartMin: 4.5, couloirs: 14 },  // premier champ, plus facile
+    { debut: 1000, longueur: 50,  nombre: 50, ecartMin: 3.0, couloirs: 14 }   // deuxième champ, plus difficile
   ],
 
   // V2 — deux chasse-neige garés de biais, de chaque côté, en chicane très large (échauffement).
@@ -38,11 +37,12 @@ window.PISTE_V1 = {
     { y: 100, cote: 1 }
   ],
 
-  // V3 — École de ski : un moniteur suivi de 8 enfants, en file, qui descend en zigzag d'un bord à l'autre
-  // à environ 8 km/h. debut : hauteur où commence le zigzag (m) ; depart : l'école se met en route quand le
-  // joueur passe cette hauteur ; ecart : distance entre deux skieurs de la file (m) ; descente : mètres de
-  // pente descendus à chaque traversée ; marge : distance gardée avec les sapins (m).
-  ecoleDeSki: { debut: 400, depart: 330, vitesse: 8, ecart: 2.4, descente: 7, marge: 2.5 },
+  // V3.1 — École de ski : un moniteur suivi de 4 enfants, étirés en file sur toute la largeur de la piste,
+  // qui descendent en zigzag d'un bord à l'autre à environ 8 km/h : il faut passer entre eux.
+  // debut : hauteur où commence le zigzag (m), dans la ligne droite avant le 2e champ de bosses ; depart : l'école se met en
+  // route quand le joueur passe cette hauteur ; ecart : distance entre deux skieurs de la file (m) ;
+  // descente : mètres de pente descendus à chaque traversée ; marge : distance gardée avec les sapins (m).
+  ecoleDeSki: { debut: 815, depart: 745, vitesse: 8, enfants: 4, ecart: 5, descente: 7, marge: 2.5 },
 
   // V2 — « La soupe et les cailloux ! » : neige lourde (plus jaune) sur les 200 derniers mètres,
   // avec des plaques de terre à contourner. x : position en travers (-1 = bord gauche, 1 = bord droit),
