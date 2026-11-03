@@ -46,11 +46,13 @@
 
   // V3 : les trois paires de skis (vitesse max en schuss, vitesse min en chasse-neige, adhérence dans les virages)
   const SKIS = [
-    { id: 'rhea', nom: 'Tante Rhéa', devise: 'rustique mais efficace', max: 75, min: 5, grip: 1.3,
+    { id: 'rhea', nom: 'Tante Rhéa', devise: 'rustiques mais efficaces', max: 75, min: 5, grip: 1.3,
       look: { ski: '#b5793a', skiTip: '#7a4a1e' } },
-    { id: 'bec', nom: 'Madame Bec', devise: 'hors de prix mais plutôt polyvalent', max: 90, min: 10, grip: 1,
+    { id: 'bec', nom: 'Madame Bec', devise: 'hors de prix mais plutôt polyvalents', max: 90, min: 10, grip: 1,
       look: { ski: '#e53935', skiTip: '#ffca28' } },
     { id: 'fourcade', nom: 'Père Fourcade', devise: 'le haut de gamme mais ils se méritent…', max: 100, min: 15, grip: 0.8,
+      // faute de carre : au-dessus de 60 km/h, braquer à fond plus de 0,4 s fait tomber
+      carre: { vitesse: 60, duree: 0.4 },
       look: { ski: '#15171c', skiTip: '#00e5ff' } }
   ];
   let ski = SKIS[1]; // Madame Bec présélectionné
@@ -143,28 +145,30 @@
 
   const bumps = [];
   (() => {
-    let k = 1000;
-    for (const f of P.champsDeBosses) {
-      let row = 0;
-      const dy = f.ecartRangs || 5.5, dx = f.ecartBosses || 5.2;
-      for (let y = f.debut; y <= f.debut + f.longueur; y += dy, row++) {
-        const c = TRACK.center(y), hw = TRACK.halfW(y);
-        if (f.passages) {
-          // V3 : rangées de bosses serrées, avec un seul passage qui change de côté d'une rangée à l'autre.
-          // Aucune ligne droite ne traverse le champ : il faut slalomer d'un passage à l'autre.
-          const gc = f.passages[row % f.passages.length], half = (f.largeurPassage || 5) / 2 + CFG.bumpHitRadius;
-          for (let x = -hw + 0.6; x < hw - 0.3; x += dx) {
-            k++;
-            if (Math.abs(x - gc) < half) continue;
-            bumps.push({ x: c + x + (hash(k) - 0.5) * 0.2, y: y + (hash(k + 9) - 0.5) * 0.8, r: CFG.bumpRadius * (0.95 + hash(k * 7) * 0.1), hit: false });
+    // V3.1 : bosses réparties au hasard (le même hasard pour tout le monde) et isolées les unes des autres.
+    // Pour que personne ne traverse un champ tout droit, une partie des bosses est placée en « couloirs » :
+    // chaque bande verticale de la piste reçoit au moins une bosse, à une hauteur tirée au hasard.
+    for (const [fi, f] of P.champsDeBosses.entries()) {
+      let seed = 1000 + fi * 977;
+      const rnd = () => hash(seed++);
+      const placed = [];
+      const lanes = f.couloirs || 14, margin = 0.9;
+      const ok = (x, y, d) => placed.every((b) => Math.hypot(b.x - x, b.y - y) >= d);
+      const add = (xOf, rFix) => {
+        for (let d = f.ecartMin; d > 1.5; d -= 0.25) {
+          for (let tries = 0; tries < 300; tries++) {
+            const y = f.debut + rnd() * f.longueur;
+            const c = TRACK.center(y), hw = TRACK.halfW(y);
+            const x = c + xOf(hw);
+            if (ok(x, y, d)) { placed.push({ x, y, r: CFG.bumpRadius * (rFix ? 1 + rnd() * 0.1 : 0.9 + rnd() * 0.2), hit: false }); return; }
           }
-          continue;
         }
-        for (let x = -hw + (row % 2 ? 0.3 : 0.8) * dx; x < hw - 0.6; x += dx) {
-          k++;
-          bumps.push({ x: c + x + (hash(k) - 0.5) * 0.8, y: y + (hash(k + 9) - 0.5) * 1.2, r: CFG.bumpRadius * (0.9 + hash(k * 7) * 0.2), hit: false });
-        }
-      }
+      };
+      // un couloir après l'autre, dans un ordre mélangé
+      const order = Array.from({ length: lanes }, (_, k) => k).sort(() => rnd() - 0.5);
+      for (const k of order) add((hw) => -hw + 0.2 + (k + 0.5) * (2 * hw - 0.4) / lanes + (rnd() - 0.5) * 0.2, true);
+      for (let n = lanes; n < f.nombre; n++) add((hw) => -hw + margin + rnd() * (2 * hw - 2 * margin), false);
+      bumps.push(...placed);
     }
     bumps.sort((a, b) => a.y - b.y);
   })();
@@ -203,15 +207,20 @@
     const helmets = ['#1e88e5', '#e53935', '#fdd835', '#ffffff', '#43a047', '#f06292', '#fb8c00', '#212121'];
     const skins = ['#f1c27d', '#e0ac69', '#8d5524', '#c68642', '#ffdbac', '#a0673a'];
     const members = [];
-    for (let i = 0; i < 9; i++) {
+    const nKids = E.enfants || 8;
+    for (let i = 0; i <= nKids; i++) {
       const kid = i > 0;
       const sk = skins[(i * 5) % skins.length];
+      const col = kidCols[(i * 3) % kidCols.length];
       members.push({
         kid, r: kid ? 0.8 : 1.0, px: kid ? 34 : 48,
         look: kid
-          ? { jersey: kidCols[i - 1], jerseyDark: kidCols[i - 1], trim: '#ffffff', helmet: helmets[i - 1], noNumber: true,
-              skin: sk, skinDark: sk, ski: kidCols[(i + 2) % 8], skiTip: '#ffffff' }
-          : { jersey: '#d32f2f', jerseyDark: '#9a1f1f', trim: '#ffffff', helmet: '#b71c1c', noNumber: true,
+          // enfants : combinaison de ski d'une seule couleur, gants et casque
+          ? { jersey: col, jerseyDark: col, trim: col, legs: col, arms: col, gloves: '#263238', helmet: helmets[(i * 3) % helmets.length],
+              noNumber: true, skin: sk, skinDark: sk, ski: kidCols[(i * 3 + 2) % 8], skiTip: '#ffffff' }
+          // moniteur : combinaison intégrale rouge à motifs blancs, bonnet rouge, lunettes de soleil, pas de sourire
+          : { jersey: '#d32f2f', jerseyDark: '#9a1f1f', trim: '#ffffff', legs: '#d32f2f', arms: '#d32f2f', gloves: '#212121',
+              motif: '#ffffff', helmet: '#c62828', beanie: true, beanieTrim: '#ffffff', glasses: true, serious: true, noNumber: true,
               skin: '#e0ac69', skinDark: '#c68642', ski: '#212121', skiTip: '#d32f2f' }
       });
     }
@@ -417,7 +426,7 @@
       const kx = fx * 0.9 + bodyX * 0.5 + (c ? fx * 0.25 : 0);
       g.strokeStyle = L.outline; g.lineWidth = 6.2 * u;
       g.beginPath(); g.moveTo(fx, -8 * u); g.lineTo(kx, -8 * u - legH * 0.5); g.lineTo(bodyX + fx * 0.6, hipY); g.stroke();
-      g.strokeStyle = L.skin; g.lineWidth = 4.4 * u;
+      g.strokeStyle = L.legs || L.skin; g.lineWidth = 4.4 * u;
       g.beginPath(); g.moveTo(fx, -8 * u); g.lineTo(kx, -8 * u - legH * 0.5); g.lineTo(bodyX + fx * 0.6, hipY); g.stroke();
     };
     leg(-spread * u); leg(spread * u);
@@ -446,9 +455,9 @@
         g.beginPath(); g.moveTo(hx, hy + 2 * u); g.lineTo(hx + side * 6 * u, hy - 16 * u); g.stroke();
         g.strokeStyle = L.outline; g.lineWidth = 5.4 * u;
         g.beginPath(); g.moveTo(sx + side * 7 * u, sy); g.lineTo(ex, ey); g.lineTo(hx, hy); g.stroke();
-        g.strokeStyle = L.skin; g.lineWidth = 3.8 * u;
+        g.strokeStyle = L.arms || L.skin; g.lineWidth = 3.8 * u;
         g.beginPath(); g.moveTo(sx + side * 7 * u, sy); g.lineTo(ex, ey); g.lineTo(hx, hy); g.stroke();
-        g.fillStyle = L.skinDark;
+        g.fillStyle = L.gloves || L.skinDark;
         g.beginPath(); g.arc(hx, hy, 2 * u, 0, Math.PI * 2); g.fill();
         return;
       }
@@ -463,9 +472,9 @@
       // bras
       g.strokeStyle = L.outline; g.lineWidth = 5.4 * u;
       g.beginPath(); g.moveTo(sx + side * 7 * u, sy); g.lineTo(sx + side * 10.5 * u, sy + 6 * u); g.lineTo(hx, hy); g.stroke();
-      g.strokeStyle = L.skin; g.lineWidth = 3.8 * u;
+      g.strokeStyle = L.arms || L.skin; g.lineWidth = 3.8 * u;
       g.beginPath(); g.moveTo(sx + side * 7 * u, sy); g.lineTo(sx + side * 10.5 * u, sy + 6 * u); g.lineTo(hx, hy); g.stroke();
-      g.fillStyle = L.skinDark;
+      g.fillStyle = L.gloves || L.skinDark;
       g.beginPath(); g.arc(hx, hy, 2 * u, 0, Math.PI * 2); g.fill();
     };
     arm(-1); arm(1);
@@ -485,6 +494,12 @@
     g.beginPath(); g.moveTo(sx - 4 * u, ty); g.lineTo(sx, ty + 3.4 * u); g.lineTo(sx + 4 * u, ty); g.stroke();
     g.beginPath(); g.moveTo(sx - 7.4 * u, ty + 0.5 * u); g.quadraticCurveTo(sx - 5.5 * u, ty + 4 * u, sx - 7.3 * u, ty + 7 * u); g.stroke();
     g.beginPath(); g.moveTo(sx + 7.4 * u, ty + 0.5 * u); g.quadraticCurveTo(sx + 5.5 * u, ty + 4 * u, sx + 7.3 * u, ty + 7 * u); g.stroke();
+    if (L.motif) {
+      // combinaison : motifs blancs (bande en travers de la poitrine et liseré)
+      g.fillStyle = L.motif;
+      g.fillRect(sx - 7.3 * u, ty + 5.5 * u, 14.6 * u, 2.2 * u);
+      g.fillRect(sx - 7.3 * u, ty + 9 * u, 14.6 * u, 0.9 * u);
+    }
     // numéro 9
     const nH = Math.max(6, (tb - ty) - 5 * u);
     g.font = `900 ${nH}px "Arial Black", "Helvetica Neue", Arial, sans-serif`;
@@ -519,11 +534,26 @@
     const look = Math.sin(th) * 0.5 * u;
     g.beginPath(); g.arc(hx - 2.1 * u + look, hy + 0.7 * u, 0.7 * u, 0, Math.PI * 2); g.fill();
     g.beginPath(); g.arc(hx + 2.1 * u + look, hy + 0.7 * u, 0.7 * u, 0, Math.PI * 2); g.fill();
+    if (L.glasses) {
+      // lunettes de soleil
+      g.fillStyle = '#111';
+      roundRect(g, hx - 4.3 * u, hy - 0.9 * u, 3.9 * u, 2.9 * u, 1 * u); g.fill();
+      roundRect(g, hx + 0.4 * u, hy - 0.9 * u, 3.9 * u, 2.9 * u, 1 * u); g.fill();
+      g.fillRect(hx - 0.6 * u, hy - 0.3 * u, 1.2 * u, 0.7 * u);
+      g.fillStyle = 'rgba(255,255,255,0.45)';
+      g.fillRect(hx - 3.6 * u, hy - 0.4 * u, 1.2 * u, 0.6 * u); g.fillRect(hx + 1.1 * u, hy - 0.4 * u, 1.2 * u, 0.6 * u);
+    }
     g.strokeStyle = '#4a2e1a'; g.lineWidth = 0.9 * u;
     g.beginPath(); g.moveTo(hx - 2.4 * u, hy - 1.6 * u); g.lineTo(hx - 0.9 * u, hy - 1.9 * u); g.stroke();
     g.beginPath(); g.moveTo(hx + 0.9 * u, hy - 1.9 * u); g.lineTo(hx + 2.4 * u, hy - 1.6 * u); g.stroke();
-    g.fillStyle = '#fff';
-    g.beginPath(); g.moveTo(hx - 2.2 * u, hy + 3 * u); g.quadraticCurveTo(hx, hy + 5.4 * u, hx + 2.2 * u, hy + 3 * u); g.closePath(); g.fill();
+    if (L.serious) {
+      // bouche fermée : il ne sourit pas
+      g.strokeStyle = '#4a2e1a'; g.lineWidth = 0.9 * u;
+      g.beginPath(); g.moveTo(hx - 1.8 * u, hy + 3.8 * u); g.lineTo(hx + 1.8 * u, hy + 3.8 * u); g.stroke();
+    } else {
+      g.fillStyle = '#fff';
+      g.beginPath(); g.moveTo(hx - 2.2 * u, hy + 3 * u); g.quadraticCurveTo(hx, hy + 5.4 * u, hx + 2.2 * u, hy + 3 * u); g.closePath(); g.fill();
+    }
     if (L.helmet) {
       // casque (ou bonnet) des skieurs de l'école de ski
       g.fillStyle = L.outline;
@@ -532,6 +562,15 @@
       g.beginPath(); g.ellipse(hx, hy - 1.2 * u, 6.4 * u, 6.1 * u, 0, Math.PI, 0); g.closePath(); g.fill();
       g.fillStyle = 'rgba(255,255,255,0.35)';
       g.beginPath(); g.ellipse(hx - 2.2 * u, hy - 4.6 * u, 2 * u, 1.1 * u, -0.4, 0, Math.PI * 2); g.fill();
+      if (L.beanie) {
+        // bonnet : revers et pompon
+        g.fillStyle = L.beanieTrim || '#ffffff';
+        g.fillRect(hx - 6.4 * u, hy - 2.6 * u, 12.8 * u, 1.6 * u);
+        g.fillStyle = L.outline;
+        g.beginPath(); g.arc(hx, hy - 8 * u, 2.5 * u, 0, Math.PI * 2); g.fill();
+        g.fillStyle = L.beanieTrim || '#ffffff';
+        g.beginPath(); g.arc(hx, hy - 8 * u, 1.8 * u, 0, Math.PI * 2); g.fill();
+      }
     }
     g.restore();
   }
@@ -690,7 +729,7 @@
       gateOpen: 0, announced: {}, fallReason: ''
     });
     S.camX = S.x; S.camY = S.y - viewH() * CFG.skierScreenFrac;
-    S.lastBeep = null; S.heavy = false; S.turnAmt = 0; S.schoolT = 0;
+    S.lastBeep = null; S.heavy = false; S.turnAmt = 0; S.schoolT = 0; S.edgeT = 0;
     S.ref = window.Famille ? Famille.reference() : null; // record de la famille au départ
     input.keys.clear(); input.touch = null;
     showScreen(null);
@@ -699,11 +738,11 @@
 
   const viewH = () => H / SCALE;
 
-  function showBanner(text) {
+  function showBanner(text, style) {
     const now = S.t;
     if (S.bannerSeen[text] !== undefined && now - S.bannerSeen[text] < CFG.bannerCooldown) return;
     S.bannerSeen[text] = now;
-    S.banner = { text, t0: now };
+    S.banner = { text, t0: now, style };
   }
 
   function fall(reason) {
@@ -813,6 +852,11 @@
     const d = target - S.th;
     const dth = Math.sign(d) * Math.min(Math.abs(d), omega * dt);
     S.th += dth;
+    // Père Fourcade : virage trop serré à grande vitesse = faute de carre
+    if (ski.carre && S.v > ski.carre.vitesse * KMH && Math.abs(input.steer) >= 0.95) {
+      S.edgeT = (S.edgeT || 0) + dt;
+      if (S.edgeT > ski.carre.duree) { S.edgeT = 0; showBanner('Faute de carre !', 'noir'); fall('carre'); return; }
+    } else S.edgeT = 0;
     // force du virage pour le son : skis sur la carre (trajectoire en travers) + vitesse de rotation
     S.turnAmt = Math.min(1, Math.abs(Math.sin(S.th)) * 1.4 + Math.abs(dth / dt) / 1.5);
 
@@ -1454,12 +1498,13 @@
         ctx.save();
         ctx.translate(W / 2, y + bh / 2);
         ctx.rotate(-0.02);
-        ctx.fillStyle = '#c62828';
+        const noir = S.banner.style === 'noir';
+        ctx.fillStyle = noir ? '#000000' : '#c62828';
         ctx.beginPath(); ctx.moveTo(-w / 2 - 14, -bh / 2 + 6); ctx.lineTo(-w / 2, -bh / 2 + 6); ctx.lineTo(-w / 2, bh / 2 + 6); ctx.lineTo(-w / 2 - 14, bh / 2 + 6); ctx.lineTo(-w / 2 - 6, 6); ctx.closePath(); ctx.fill();
         ctx.beginPath(); ctx.moveTo(w / 2 + 14, -bh / 2 + 6); ctx.lineTo(w / 2, -bh / 2 + 6); ctx.lineTo(w / 2, bh / 2 + 6); ctx.lineTo(w / 2 + 14, bh / 2 + 6); ctx.lineTo(w / 2 + 6, 6); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = '#e53935';
+        ctx.fillStyle = noir ? '#1a1a1a' : '#e53935';
         roundRect(ctx, -w / 2, -bh / 2, w, bh, 6); ctx.fill();
-        ctx.strokeStyle = '#ffca28'; ctx.lineWidth = 2.5;
+        ctx.strokeStyle = noir ? '#ffffff' : '#ffca28'; ctx.lineWidth = 2.5;
         roundRect(ctx, -w / 2 + 4, -bh / 2 + 4, w - 8, bh - 8, 4); ctx.stroke();
         ctx.fillStyle = '#ffffff';
         ctx.fillText(S.banner.text, 0, 2);
@@ -1603,7 +1648,8 @@
     box.innerHTML =
       row('Vitesse', (ski.max - 60) / 45, `${ski.max} km/h en schuss`) +
       row('Freinage', (20 - ski.min) / 17, `chasse-neige jusqu'à ${ski.min} km/h`) +
-      row('Virages', (ski.grip - 0.6) / 0.8, grip ? `adhérence ${grip > 0 ? '+' : '−'}${Math.abs(grip)} %` : 'adhérence de référence');
+      row('Virages', (ski.grip - 0.6) / 0.8, grip ? `adhérence ${grip > 0 ? '+' : '−'}${Math.abs(grip)} %` : 'adhérence de référence') +
+      (ski.carre ? `<span></span><span class="ski-model" style="color:#c62828">⚠ Virage trop serré à plus de ${ski.carre.vitesse} km/h : faute de carre !</span>` : '');
   }
 
   function openSkis() {
