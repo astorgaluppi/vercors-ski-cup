@@ -7,7 +7,7 @@ Petit jeu de ski en famille, jouable dans le navigateur d'un téléphone (portra
 - Ordinateur : flèches du clavier (Entrée ou Espace pour « Jouer » / « Rejouer »).
 
 ## Contenu
-Piste de 1 500 m avec sapins du bord et deux champs de bosses (300 m et 1 000 m), compte à rebours,
+Piste de 1 500 m avec sapins du bord et deux champs de bosses (200 m et 1 100 m), compte à rebours,
 chrono au dixième, vitesse en km/h, temps intermédiaires à 500 m et 1 000 m, arrivée avec aire d'arrêt,
 « Chute ! » et « Hors délai » (2 min).
 

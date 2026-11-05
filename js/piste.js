@@ -16,7 +16,7 @@ window.PISTE_V1 = {
     { longueur: 100, angle: 30 },
     { longueur: 80,  angle: 0 },
     { longueur: 80,  angle: -30 },
-    { longueur: 190, angle: 0 },     // 2e champ de bosses + intermédiaire 2 (1000 m)
+    { longueur: 190, angle: 0 },     // intermédiaire 2 (1000 m) + 2e champ de bosses (1100 m)
     { longueur: 80,  angle: 20 },
     { longueur: 90,  angle: 0 },
     { longueur: 80,  angle: -20 },
@@ -27,7 +27,7 @@ window.PISTE_V1 = {
     // minimale entre deux bosses (m). couloirs : la piste est découpée en bandes verticales qui reçoivent chacune
     // au moins une bosse, pour qu'on ne puisse pas traverser un champ tout droit.
     { debut: 200,  longueur: 50,  nombre: 20, ecartMin: 4.5, couloirs: 14 },  // premier champ, plus facile
-    { debut: 1000, longueur: 50,  nombre: 50, ecartMin: 3.0, couloirs: 14 }   // deuxième champ, plus difficile
+    { debut: 1100, longueur: 50,  nombre: 50, ecartMin: 3.0, couloirs: 14 }   // deuxième champ, plus difficile
   ],
 
   // V2 — deux chasse-neige garés de biais, de chaque côté, en chicane très large (échauffement).
@@ -37,7 +37,7 @@ window.PISTE_V1 = {
     { y: 100, cote: 1 }
   ],
 
-  // V3.1 — École de ski : un moniteur suivi de 4 enfants, étirés en file sur toute la largeur de la piste,
+  // V3.1 — École de ski : un moniteur suivi de 6 enfants, étirés en file sur toute la largeur de la piste,
   // qui descendent en zigzag d'un bord à l'autre à environ 8 km/h : il faut passer entre eux.
   // debut : hauteur où commence le zigzag (m), dans la ligne droite avant le 2e champ de bosses ; depart : l'école se met en
   // route quand le joueur passe cette hauteur ; ecart : distance entre deux skieurs de la file (m) ;

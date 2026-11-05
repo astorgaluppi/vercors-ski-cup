@@ -51,21 +51,12 @@
     { id: 'bec', nom: 'Madame Bec', devise: 'hors de prix mais plutôt polyvalents', max: 90, min: 10, grip: 1,
       look: { ski: '#e53935', skiTip: '#ffca28' } },
     { id: 'fourcade', nom: 'Père Fourcade', devise: 'le haut de gamme mais ils se méritent…', max: 100, min: 15, grip: 0.8,
-      // difficulté propre : une des variantes de CARRE ci-dessous (version de test, au choix)
-      carre: true,
+      // faute de carre : au-dessus de 40 km/h, relâcher puis redonner la même direction en moins de 0,5 s fait tomber
+      carre: { vitesse: 40, delai: 0.5 },
       look: { ski: '#15171c', skiTip: '#00e5ff' } }
   ];
   let ski = SKIS[1]; // Madame Bec présélectionné
 
-  // V3.3 (test) : trois façons de rendre les skis Père Fourcade exigeants, à comparer en jouant.
-  const CARRE = {
-    serre: { nom: 'Serré', texte: 'Au-dessus de 60 km/h, braquer à fond plus de 0,4 s : faute de carre !', vitesse: 60, duree: 0.4 },
-    rebond: { nom: 'Rebond', texte: 'Au-dessus de 40 km/h, relâcher puis redonner la même direction en moins de 0,5 s : faute de carre !', vitesse: 40, delai: 0.5 },
-    nerveux: { nom: 'Nerveux', texte: 'Pas de chute en plus, mais la direction répond avec un léger retard puis dépasse la trajectoire voulue.' }
-  };
-  const CARRE_KEY = 'ptpsc-carre-variante';
-  let carreV = 'serre';
-  try { const v = localStorage.getItem(CARRE_KEY); if (CARRE[v]) carreV = v; } catch (e) { /* stockage indisponible */ }
   const FINISH = P.longueur;
 
   // ---------- Hasard déterministe (même décor pour tous) ----------
@@ -739,7 +730,7 @@
       gateOpen: 0, announced: {}, fallReason: ''
     });
     S.camX = S.x; S.camY = S.y - viewH() * CFG.skierScreenFrac;
-    S.lastBeep = null; S.heavy = false; S.turnAmt = 0; S.schoolT = 0; S.edgeT = 0; S.edgeDir = 0; S.edgeLast = 0; S.nervIn = 0; S.thv = 0;
+    S.lastBeep = null; S.heavy = false; S.turnAmt = 0; S.schoolT = 0; S.edgeT = 0; S.edgeDir = 0; S.edgeLast = 0;
     S.ref = window.Famille ? Famille.reference() : null; // record de la famille au départ
     input.keys.clear(); input.touch = null;
     showScreen(null);
@@ -858,31 +849,13 @@
     S.heavy = heavy;
     const grip = CFG.grip * ski.grip * (input.brake ? CFG.brakeGripMul : 1) * (heavy ? CFG.heavyGripMul : 1);
     const omega = Math.min(CFG.maxTurnRate * ski.grip, grip / Math.max(S.v, 0.5));
-    const variante = ski.carre ? carreV : null, C = variante && CARRE[variante];
-    let dth, target;
-    if (variante === 'nerveux') {
-      // skis nerveux : la commande arrive avec un léger retard (filtre), puis le cap file
-      // sur sa lancée comme un ressort peu amorti et dépasse la direction voulue avant d'y revenir
-      S.nervIn += (input.steer - S.nervIn) * Math.min(1, dt / 0.12);
-      target = S.nervIn * CFG.maxAngle; const w0 = 7, zeta = 0.3, vmax = omega * 1.25;
-      S.thv += (w0 * w0 * (target - S.th) - 2 * zeta * w0 * S.thv) * dt;
-      S.thv = Math.max(-vmax, Math.min(vmax, S.thv));
-      dth = S.thv * dt;
-      S.th = Math.max(-85 * DEG, Math.min(85 * DEG, S.th + dth));
-    } else {
-      target = input.steer * CFG.maxAngle;
-      const d = target - S.th;
-      dth = Math.sign(d) * Math.min(Math.abs(d), omega * dt);
-      S.th += dth;
-    }
-    if (variante === 'serre') {
-      // virage trop serré à grande vitesse = faute de carre
-      if (S.v > C.vitesse * KMH && Math.abs(input.steer) >= 0.95) {
-        S.edgeT += dt;
-        if (S.edgeT > C.duree) { S.edgeT = 0; showBanner('Faute de carre !', 'noir'); fall('carre'); return; }
-      } else S.edgeT = 0;
-    } else if (variante === 'rebond') {
-      // relâcher puis redonner la même direction trop vite = faute de carre
+    const target = input.steer * CFG.maxAngle;
+    const d = target - S.th;
+    const dth = Math.sign(d) * Math.min(Math.abs(d), omega * dt);
+    S.th += dth;
+    // Père Fourcade : relâcher puis redonner la même direction trop vite = faute de carre
+    if (ski.carre) {
+      const C = ski.carre;
       const dir = Math.abs(input.steer) > 0.35 ? Math.sign(input.steer) : (Math.abs(input.steer) < 0.15 ? 0 : S.edgeDir);
       if (dir === 0 && S.edgeDir !== 0) { S.edgeLast = S.edgeDir; S.edgeT = 0; }
       else if (dir === 0) S.edgeT += dt;
@@ -1684,14 +1657,7 @@
       row('Vitesse', (ski.max - 60) / 45, `${ski.max} km/h en schuss`) +
       row('Freinage', (20 - ski.min) / 17, `chasse-neige jusqu'à ${ski.min} km/h`) +
       row('Virages', (ski.grip - 0.6) / 0.8, grip ? `adhérence ${grip > 0 ? '+' : '−'}${Math.abs(grip)} %` : 'adhérence de référence') +
-      (ski.carre ? `<span class="carre-pick"><span class="carre-label">Test</span>${Object.entries(CARRE).map(([id, v]) =>
-        `<button type="button" data-carre="${id}" class="${id === carreV ? 'sel' : ''}">${v.nom}</button>`).join('')}</span>` +
-        `<span class="ski-model carre-text">⚠ ${CARRE[carreV].texte}</span>` : '');
-    box.querySelectorAll('[data-carre]').forEach((b) => b.addEventListener('click', () => {
-      carreV = b.dataset.carre;
-      try { localStorage.setItem(CARRE_KEY, carreV); } catch (e) { /* ignoré */ }
-      skiStats();
-    }));
+      (ski.carre ? `<span class="ski-model carre-text">⚠ Au-dessus de ${ski.carre.vitesse} km/h, relâcher puis redonner la même direction trop vite : faute de carre !</span>` : '');
   }
 
   function openSkis() {
@@ -1782,5 +1748,5 @@
   requestAnimationFrame(frame);
 
   // Accès pour les tests automatiques et le dessin des icônes
-  window.PTPSC = { drawSkier, state: S, input, track: TRACK, bumps, plows, muds, ecole: ECOLE, skis: SKIS, setSki: (id) => { ski = SKIS.find((k) => k.id === id) || ski; }, setCarre: (v) => { if (CARRE[v]) carreV = v; }, cfg: CFG, step, fmt, resetRace, goHome, showScreen };
+  window.PTPSC = { drawSkier, state: S, input, track: TRACK, bumps, plows, muds, ecole: ECOLE, skis: SKIS, setSki: (id) => { ski = SKIS.find((k) => k.id === id) || ski; }, cfg: CFG, step, fmt, resetRace, goHome, showScreen };
 })();
