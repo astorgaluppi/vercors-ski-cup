@@ -104,6 +104,12 @@
     .ski-stats .bar { align-self: center; height: 10px; border-radius: 5px; background: #e3eaf4; overflow: hidden; }
     .ski-stats .bar span { display: block; height: 100%; background: var(--red); border-radius: 5px; transition: width .2s; }
     .ski-model { font-size: 12px; font-weight: 700; color: #5c6f8f; }
+    .carre-label { white-space: nowrap; margin-right: 2px; font-size: 12px; font-weight: 900; color: #c62828; text-transform: uppercase; }
+    .carre-pick { grid-column: 1 / -1; display: flex; gap: 4px; align-items: center; justify-content: center; margin-top: 4px; }
+    .carre-text { grid-column: 1 / -1; color: #c62828; text-align: center; }
+    .carre-pick button { appearance: none; font: inherit; font-size: 12px; font-weight: 700; color: var(--navy); background: #f1f5fb; border: 2px solid #d5deea;
+      border-radius: 12px; padding: 3px 7px; cursor: pointer; white-space: nowrap; }
+    .carre-pick button.sel { background: #15171c; border-color: #15171c; color: #00e5ff; }
     /* V3 : page d'accueil (logo, podium, ombre chinoise du Vercors, bande du tire-fesses) */
     #screen-home { justify-content: center; gap: 12px; background: linear-gradient(180deg, #9fcdfb 0%, #d4e8fd 40%, #f6f9fd 70%); }
     .hero { position: relative; width: calc(100% + 48px); margin: 0 -24px; padding: 0 24px 6px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
@@ -157,7 +163,7 @@
       <button class="btn btn-link" id="home-board-btn">🏆 Classement de la famille</button>
       <p class="hint">Pose ton pouce et glisse :<br><b>← →</b> tourner · <b>↓</b> schuss · <b>↑</b> chasse-neige<br>Évite les sapins, 1&nbsp;500&nbsp;m en moins de 2&nbsp;min&nbsp;!</p>
       <button class="tiny" id="home-change-code" type="button">Changer de code famille</button>
-      <p class="version">version 3.2</p>
+      <p class="version">version 3.3</p>
       <p id="music-hint" hidden>🎵 Touche l'écran pour la musique</p>
     </section>
 
@@ -225,12 +231,12 @@
   <canvas id="tirefesses" aria-hidden="true"></canvas>
   <div id="rotate">Tourne ton téléphone en mode portrait 📱</div>
 
-  <script src="js/config.js?v=3.2"></script>
-  <script src="js/piste.js?v=3.2"></script>
-  <script src="js/sons.js?v=3.2"></script>
-  <script src="js/famille.js?v=3.2"></script>
-  <script src="js/game.js?v=3.2"></script>
-  <script src="js/accueil.js?v=3.2"></script>
+  <script src="js/config.js?v=3.3"></script>
+  <script src="js/piste.js?v=3.3"></script>
+  <script src="js/sons.js?v=3.3"></script>
+  <script src="js/famille.js?v=3.3"></script>
+  <script src="js/game.js?v=3.3"></script>
+  <script src="js/accueil.js?v=3.3"></script>
   <script>
     (() => {
       const b = document.getElementById('btn-son');
