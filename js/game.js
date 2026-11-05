@@ -213,7 +213,7 @@
       const sk = skins[(i * 5) % skins.length];
       const col = kidCols[(i * 3) % kidCols.length];
       members.push({
-        kid, r: kid ? 0.8 : 1.0, px: kid ? 34 : 48,
+        kid, r: kid ? 0.8 : 1.0, hit: kid ? 1.35 : 1.6, px: kid ? 34 : 48,
         look: kid
           // enfants : combinaison de ski d'une seule couleur, gants et casque
           ? { jersey: col, jerseyDark: col, trim: col, legs: col, arms: col, gloves: '#263238', helmet: helmets[(i * 3) % helmets.length],
@@ -226,7 +226,7 @@
     }
     return {
       E, members,
-      // positions des 9 skieurs au temps t (s) depuis la mise en route
+      // positions du moniteur et des enfants au temps t (s) depuis la mise en route
       positions(t) {
         const lead = (members.length - 1) * E.ecart + E.vitesse * KMH * t;
         return members.map((m, i) => Object.assign({ m }, at(lead - i * E.ecart)));
@@ -945,7 +945,7 @@
     // école de ski : toucher le moniteur ou un enfant fait tomber
     if (ECOLE) {
       for (const k of ECOLE.positions(S.schoolT || 0)) {
-        if (Math.abs(k.y - S.y) < 2 && Math.hypot(k.x - S.x, k.y - S.y) < k.m.r) { fall('ecole'); return; }
+        if (Math.abs(k.y - S.y) < 2 && Math.hypot(k.x - S.x, k.y - S.y) < k.m.hit) { fall('ecole'); return; }
       }
     }
 

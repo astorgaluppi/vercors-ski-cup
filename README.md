@@ -27,8 +27,8 @@ Nouveautés de la V3 :
 - **Choix des skis** juste avant la course : « Tante Rhéa » (75 km/h, chasse-neige jusqu'à 5 km/h, virages +30 %),
   « Madame Bec » (réglages de la V2, présélectionnée) et « Père Fourcade » (100 km/h, 15 km/h, virages −20 %).
   « Rejouer » repart avec la même paire ; la paire du record s'affiche dans le classement.
-- **École de ski** (« Le moniteur de ski ! », vers 400 m) : un moniteur en rouge suivi de 8 enfants descend en
-  zigzag d'un bord à l'autre à 8 km/h ; toucher l'un des 9 skieurs fait tomber.
+- **École de ski** (« Le moniteur de ski ! », vers 815 m) : un moniteur en rouge suivi de 6 enfants descend en
+  zigzag d'un bord à l'autre à 8 km/h ; toucher l’un des 7 skieurs (zone de contact un peu plus large que le dessin) fait tomber.
 - **Champs de bosses en passages** : rangées serrées avec une seule ouverture qui change de côté à chaque rangée,
   impossible de passer tout droit.
 - **Page d'accueil** : logo du jeu, podium des 3 meilleurs temps de la famille (or, argent, bronze), ombre chinoise

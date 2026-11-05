@@ -42,7 +42,7 @@ window.PISTE_V1 = {
   // debut : hauteur où commence le zigzag (m), dans la ligne droite avant le 2e champ de bosses ; depart : l'école se met en
   // route quand le joueur passe cette hauteur ; ecart : distance entre deux skieurs de la file (m) ;
   // descente : mètres de pente descendus à chaque traversée ; marge : distance gardée avec les sapins (m).
-  ecoleDeSki: { debut: 815, depart: 745, vitesse: 8, enfants: 4, ecart: 5, descente: 7, marge: 2.5 },
+  ecoleDeSki: { debut: 815, depart: 745, vitesse: 8, enfants: 6, ecart: 5, descente: 7, marge: 2.5 },
 
   // V2 — « La soupe et les cailloux ! » : neige lourde (plus jaune) sur les 200 derniers mètres,
   // avec des plaques de terre à contourner. x : position en travers (-1 = bord gauche, 1 = bord droit),

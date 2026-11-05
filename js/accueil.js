@@ -3,11 +3,26 @@
   'use strict';
   const home = document.getElementById('screen-home');
 
-  // Musique d'attente : les navigateurs bloquent le son avant le premier toucher de l'écran.
+  // Musique d'attente. Les navigateurs interdisent le son tant qu'on n'a pas touché la page :
+  // on essaie quand même dès le chargement (certains le permettent), sinon elle part au
+  // premier toucher, n'importe où sur l'écran. Une bulle « 🎵 » le rappelle en attendant.
+  const hint = document.getElementById('music-hint');
+  const refresh = () => {
+    if (!hint || !window.Sons) return;
+    hint.hidden = Sons.running() || Sons.isMuted() || !home.classList.contains('visible');
+  };
   const firstTouch = () => {
     if (window.Sons && home.classList.contains('visible')) { Sons.unlock(); Sons.music(true); }
+    setTimeout(refresh, 300);
   };
-  for (const ev of ['pointerdown', 'keydown', 'touchend']) document.addEventListener(ev, firstTouch, { capture: true, passive: true });
+  for (const ev of ['pointerdown', 'pointerup', 'keydown', 'touchend', 'click']) document.addEventListener(ev, firstTouch, { capture: true, passive: true });
+  if (window.Sons && Sons.supported()) {
+    Sons.onState(refresh);
+    Sons.onChange(refresh);
+    new MutationObserver(refresh).observe(home, { attributes: true, attributeFilter: ['class'] });
+    if (home.classList.contains('visible')) { Sons.unlock(); Sons.music(true); }
+    refresh();
+  }
 
   // ---------- Bande du tire-fesses (écrans larges seulement) ----------
   // Le skieur reste en place, accroché à sa perche ; le paysage défile vers le bas.
