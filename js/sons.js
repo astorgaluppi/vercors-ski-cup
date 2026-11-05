@@ -1,4 +1,4 @@
-// Pas Très Pentu Ski Cup — bruitages (V2) et musique d'attente (V3)
+// Pas Très Pentu Ski Cup — bruitages (V2, V4) et musique d'attente (V3)
 // Tous les sons sont fabriqués par le jeu avec Web Audio : aucun fichier à télécharger (0 Ko).
 // La glisse suit la vitesse et devient plus forte dans les virages et en chasse-neige ; cloches et foule sont jouées en fond.
 window.Sons = (() => {
@@ -9,7 +9,7 @@ window.Sons = (() => {
   try { muted = localStorage.getItem(KEY) === '1'; } catch (e) { /* stockage indisponible */ }
 
   let ac = null, master = null, noise = null;
-  let glide = null, crowd = null;
+  let glide = null, crowd = null, canon = null;
   let bellTimer = 0, cheer = null, reverseTimer = 0;
   let clapBuses = [];
   const listeners = [], stateListeners = [];
@@ -105,6 +105,16 @@ window.Sons = (() => {
       }
       g.connect(master);
       crowd = { g };
+    }
+    // V4 : souffle des canons à neige (bruit aigu et puissant)
+    {
+      const src = noiseSource();
+      const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900;
+      const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5000;
+      const g = ac.createGain(); g.gain.value = 0;
+      src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(master);
+      src.start();
+      canon = { g };
     }
   }
 
@@ -296,6 +306,63 @@ window.Sons = (() => {
       if (!ac) return;
       ramp(crowd.g.gain, 0, 0.3); // pas de murmure de foule pendant la descente
     },
+    // V4 : pas de patineur du biathlète (la carre qui pousse et glisse sur la neige)
+    pas(vol, pan) {
+      if (!ac) return;
+      const t = ac.currentTime + 0.01;
+      const s = noiseSource();
+      const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.2;
+      bp.frequency.setValueAtTime(2600, t); bp.frequency.exponentialRampToValueAtTime(1200, t + 0.25);
+      const g = ac.createGain(); env(g, t, 0.02, 0.22 * vol, 0.25);
+      const p = panner(pan);
+      s.connect(bp); bp.connect(g); g.connect(p); p.connect(master);
+      s.start(t, Math.random()); s.stop(t + 0.35);
+    },
+    // V4 : le biathlète souffle fort (« hhhh »)
+    souffle(vol, pan) {
+      if (!ac) return;
+      const t = ac.currentTime + 0.02;
+      const s = noiseSource();
+      const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 2.2;
+      bp.frequency.setValueAtTime(1300, t); bp.frequency.exponentialRampToValueAtTime(650, t + 0.4);
+      const g = ac.createGain(); env(g, t, 0.06, 0.3 * vol, 0.38);
+      const p = panner(pan);
+      s.connect(bp); bp.connect(g); g.connect(p); p.connect(master);
+      s.start(t, Math.random()); s.stop(t + 0.55);
+    },
+    // V4 : un sac lancé par les Frères Lhuillier (« fiouuu »)
+    lancer(pan) {
+      if (!ac) return;
+      const t = ac.currentTime + 0.01;
+      const s = noiseSource();
+      const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 4;
+      bp.frequency.setValueAtTime(500, t); bp.frequency.exponentialRampToValueAtTime(1800, t + 0.3); bp.frequency.exponentialRampToValueAtTime(700, t + 0.6);
+      const g = ac.createGain(); env(g, t, 0.15, 0.18, 0.45);
+      const p = panner(pan);
+      s.connect(bp); bp.connect(g); g.connect(p); p.connect(master);
+      s.start(t, Math.random()); s.stop(t + 0.7);
+    },
+    // V4 : le sac s'écrase et les pièces d'or tintent
+    pieces(vol, pan) {
+      if (!ac) return;
+      const t = ac.currentTime + 0.01;
+      const out = ac.createGain(); out.gain.value = vol;
+      const p = panner(pan);
+      out.connect(p); p.connect(master);
+      const s = noiseSource();
+      const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500;
+      const g = ac.createGain(); env(g, t, 0.005, 0.5, 0.18);
+      s.connect(lp); lp.connect(g); g.connect(out);
+      s.start(t, Math.random()); s.stop(t + 0.3);
+      for (let i = 0; i < 14; i++) {
+        const tt = t + 0.02 + Math.random() * 0.5;
+        const o = ac.createOscillator(); o.type = 'sine';
+        o.frequency.value = 2400 + Math.random() * 3200;
+        const og = ac.createGain(); env(og, tt, 0.002, 0.08 + Math.random() * 0.06, 0.12 + Math.random() * 0.15);
+        o.connect(og); og.connect(out);
+        o.start(tt); o.stop(tt + 0.35);
+      }
+    },
     fall(reason) {
       if (!ac) return;
       const t = ac.currentTime;
@@ -338,7 +405,7 @@ window.Sons = (() => {
     },
     stop() {
       if (!ac) return;
-      ramp(crowd.g.gain, 0, 0.4); ramp(glide.g.gain, 0, 0.1);
+      ramp(crowd.g.gain, 0, 0.4); ramp(glide.g.gain, 0, 0.1); ramp(canon.g.gain, 0, 0.1);
       cheer = null;
     }
   };
@@ -354,6 +421,9 @@ window.Sons = (() => {
     const carve = moving ? Math.min(1, st.turn * Math.min(1, v / 10) + (st.brake ? 0.8 : 0) + (st.skid ? 1 : 0)) : 0;
     ramp(glide.g.gain, moving ? 0.05 + sp * sp * 0.13 + (st.heavy ? 0.04 : 0) + carve * (0.07 + sp * 0.07) : 0, 0.08);
     ramp(glide.lp.frequency, (st.heavy ? 260 : 380) + sp * 1000 + carve * 350, 0.08);
+
+    // V4 : canons à neige en marche
+    ramp(canon.g.gain, (st.canon || 0) * 0.16, 0.25);
 
     // bip bip de recul des chasse-neige à l'écran
     if (st.reverse > 0) {

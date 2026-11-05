@@ -1,4 +1,4 @@
-// Pas Très Pentu Ski Cup — V3
+// Pas Très Pentu Ski Cup — V4
 // Jeu 2D en Canvas, sans dépendance. Le skieur est en haut de l'écran,
 // la piste défile vers le haut et les obstacles arrivent par le bas.
 (() => {
@@ -233,6 +233,49 @@
         return members.map((m, i) => Object.assign({ m }, at(lead - i * E.ecart)));
       }
     };
+  })();
+
+  // V4 : canons à neige, au bord de la piste, tournés vers le milieu
+  const CANONS = (() => {
+    const C = P.canonsANeige;
+    if (!C) return null;
+    const list = C.canons.map((c) => {
+      const hw = TRACK.halfW(c.y);
+      return { x: TRACK.center(c.y) + c.cote * (hw + 0.9), y: c.y, cote: c.cote };
+    });
+    return { C, list, top: Math.min(...list.map((c) => c.y)), bot: Math.max(...list.map((c) => c.y)) };
+  })();
+  // force du nuage (0..1) t secondes après la mise en marche : il monte en 1 s et se dissipe en 1,2 s
+  const fogLevel = (t) => {
+    if (!CANONS || t < 0 || t > CANONS.C.duree) return 0;
+    return Math.max(0, Math.min(1, t / 1, (CANONS.C.duree - t) / 1.2));
+  };
+
+  // V4 : le biathlète remonte la piste à contresens, en zigzag d'un bord à l'autre
+  const BIATH = (() => {
+    const B = P.biathlete;
+    if (!B) return null;
+    return {
+      B,
+      // position t secondes après sa mise en route ; ph : phase du pas de patineur
+      at(t) {
+        const y = B.debut - B.vitesse * KMH * t;
+        const hw = TRACK.halfW(y), ph = t * Math.PI * 2 * 0.75;
+        const x = TRACK.center(y) + Math.sin(t * Math.PI * 2 / B.periode + 0.7) * hw * B.largeur + Math.sin(ph) * 0.35;
+        return { x, y, ph };
+      }
+    };
+  })();
+
+  // V4 : les Frères Lhuillier, un de chaque côté, juste devant les sapins
+  const LHU = (() => {
+    const L = P.lhuillier;
+    if (!L) return null;
+    const freres = L.freres.map((f, i) => {
+      const c = TRACK.center(f.y), hw = TRACK.halfW(f.y);
+      return { y: f.y, cote: f.cote, xIn: c + f.cote * (hw + 0.7), xOut: c + f.cote * (hw + 4), i };
+    });
+    return { L, freres };
   })();
 
   // V2 : neige lourde et plaques de terre
@@ -717,7 +760,8 @@
     countdown: 0, splits: [], finalTime: null,
     endTimer: 0, fallT: 0, skidSide: 1, lift: 0,
     banner: null, bannerSeen: {}, splitMsg: null,
-    particles: [], trail: [], lastTrailY: 0, gateOpen: 0, announced: {}
+    particles: [], trail: [], lastTrailY: 0, gateOpen: 0, announced: {},
+    fogT: -1, biathT: 0, biathStep: 0, lhu: { t: -1, next: 0, n: 0, bags: [] }, coins: [], groundCoins: []
   };
 
   function resetRace() {
@@ -731,6 +775,9 @@
     });
     S.camX = S.x; S.camY = S.y - viewH() * CFG.skierScreenFrac;
     S.lastBeep = null; S.heavy = false; S.turnAmt = 0; S.schoolT = 0; S.edgeT = 0; S.edgeDir = 0; S.edgeLast = 0;
+    // V4 : canons à neige (fogT < 0 : pas encore en marche), biathlète, Frères Lhuillier
+    S.fogT = -1; S.biathT = 0; S.biathStep = 0;
+    S.lhu = { t: -1, next: 0, n: 0, bags: [] }; S.coins = []; S.groundCoins = [];
     S.ref = window.Famille ? Famille.reference() : null; // record de la famille au départ
     input.keys.clear(); input.touch = null;
     showScreen(null);
@@ -797,6 +844,7 @@
     if (S.mode === 'race' && S.countdown > -1) S.countdown -= dt;
 
     if (ECOLE && S.y >= ECOLE.E.depart && (S.mode === 'race' || S.mode === 'fallen')) S.schoolT += dt;
+    v4Step(dt);
     if (S.mode === 'race') raceStep(dt);
     else if (S.mode === 'finishing') finishStep(dt);
     else if (S.mode === 'fallen') {
@@ -809,7 +857,8 @@
 
     // particules
     for (const p of S.particles) {
-      p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.92; p.vy *= 0.92;
+      const dr = p.drag || 0.92;
+      p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= dr; p.vy *= dr;
     }
     S.particles = S.particles.filter((p) => p.life > 0);
     if (S.particles.length > 400) S.particles.splice(0, S.particles.length - 400);
@@ -836,10 +885,109 @@
       const top = Math.min(...ks.map((k) => k.y)), bot = Math.max(...ks.map((k) => k.y));
       if (bottom >= top - 1 && S.y < bot) { S.announced.ecole = true; showBanner('Le moniteur de ski !'); }
     }
+    if (S.mode === 'race' || S.mode === 'countdown') {
+      if (CANONS && !S.announced.canons && bottom >= CANONS.top - 1 && S.y < CANONS.bot) { S.announced.canons = true; showBanner('Canons à neige !'); }
+      if (BIATH && !S.announced.biath) {
+        const b = BIATH.at(S.biathT);
+        if (bottom >= b.y - 1 && S.y < b.y) { S.announced.biath = true; showBanner('Martin Fourcade !'); }
+      }
+      if (LHU && !S.announced.lhu && S.lhu.t >= 0) { S.announced.lhu = true; showBanner('Les frères Lhuillier !'); }
+    }
     if (HEAVY && !S.announced.heavy && bottom >= HEAVY.debut - 1 && S.y < HEAVY.fin && (S.mode === 'race' || S.mode === 'countdown')) {
       S.announced.heavy = true;
       showBanner('La soupe et les cailloux !');
     }
+  }
+
+  // ---------- V4 : canons à neige, biathlète, Frères Lhuillier ----------
+  // volume (0..1) d'un son qui vient de la hauteur y : nul hors de l'écran, plus fort quand c'est près du skieur
+  function nearness(y) {
+    if (y < S.camY - 3 || y > S.camY + viewH() + 3) return 0;
+    return Math.max(0.15, 1 - Math.abs(y - S.y) / (viewH() * 0.9));
+  }
+  const panOf = (x) => Math.max(-0.8, Math.min(0.8, (x - S.x) / 12));
+
+  function v4Step(dt) {
+    if (S.mode !== 'race' && S.mode !== 'fallen' && S.mode !== 'finishing') return;
+    // canons à neige : ils se mettent en marche quand le joueur arrive, et crachent de la neige sur la piste
+    if (CANONS) {
+      if (S.fogT < 0 && S.mode === 'race' && S.y >= CANONS.C.depart) S.fogT = 0;
+      if (S.fogT >= 0) {
+        S.fogT += dt;
+        if (S.fogT < CANONS.C.duree) {
+          for (const c of CANONS.list) {
+            if (c.y < S.camY - 10 || c.y > S.camY + viewH() + 10 || Math.random() > 0.35) continue;
+            const d = -c.cote;
+            S.particles.push({
+              x: c.x + d * 1.3, y: c.y - 2.4 + (Math.random() - 0.5) * 0.4,
+              vx: d * (8 + Math.random() * 9), vy: 1 + Math.random() * 4,
+              life: 0.9 + Math.random() * 0.9, r: 0.18 + Math.random() * 0.32, drag: 0.996
+            });
+          }
+        }
+      }
+    }
+    // biathlète : il se met en route quand le joueur passe « depart » ; un pas de patineur à chaque demi-tour
+    if (BIATH && S.y >= BIATH.B.depart) {
+      const prev = BIATH.at(S.biathT).ph;
+      S.biathT += dt;
+      const b = BIATH.at(S.biathT);
+      if (Math.floor(b.ph / Math.PI) > Math.floor(prev / Math.PI) && window.Sons && Sons.on.pas) {
+        const vol = nearness(b.y), n = Math.floor(b.ph / Math.PI);
+        if (vol > 0) { Sons.on.pas(vol, panOf(b.x)); if (n % 2 === 0) Sons.on.souffle(vol, panOf(b.x)); }
+      }
+    }
+    if (LHU) lhuStep(dt);
+    // pièces d'or qui volent puis retombent et restent sur la neige
+    for (const c of S.coins) {
+      c.x += c.vx * dt; c.y += c.vy * dt; c.z += c.vz * dt; c.vz -= 30 * dt; c.spin += c.vs * dt;
+      if (c.z <= 0) {
+        c.z = 0; c.vz = -c.vz * 0.35; c.vx *= 0.55; c.vy *= 0.55;
+        if (c.vz < 1.2) { c.done = true; S.groundCoins.push({ x: c.x, y: c.y, a: c.spin }); }
+      }
+    }
+    S.coins = S.coins.filter((c) => !c.done);
+    if (S.groundCoins.length > 300) S.groundCoins.splice(0, S.groundCoins.length - 300);
+  }
+
+  function lhuStep(dt) {
+    const L = LHU.L, st = S.lhu;
+    if (st.t < 0) {
+      if (S.mode !== 'race' || S.y < L.depart) return;
+      st.t = 0; st.next = 0;
+    }
+    st.t += dt;
+    // lancer : le sac vise l'endroit où le joueur sera quand il tombera, à un ou deux mètres près
+    if (S.mode === 'race' && S.y >= L.debut && S.y < L.fin && st.t >= st.next) {
+      const f = LHU.freres[st.n % LHU.freres.length];
+      const r1 = hash(st.n * 7.77 + 3.1), r2 = hash(st.n * 3.31 + 9.7);
+      const ty = S.y + S.v * Math.cos(S.th) * L.preavis + (r2 - 0.5) * 3;
+      const c = TRACK.center(ty), hw = TRACK.halfW(ty) - 0.8;
+      const tx = Math.max(c - hw, Math.min(c + hw, S.x + S.v * Math.sin(S.th) * L.preavis + (r1 - 0.5) * 2.6));
+      st.n++;
+      st.next = st.t + L.intervalle;
+      if (ty < L.fin + 6) {
+        f.throwT = st.t;
+        st.bags.push({ fx: f.xIn - f.cote * 0.6, fy: f.y, tx, ty, t0: st.t, t1: st.t + L.preavis, landed: false, spin: r1 * 6 });
+        if (window.Sons && Sons.on.lancer) Sons.on.lancer(panOf(f.xIn));
+      }
+    }
+    for (const b of st.bags) {
+      if (b.landed || st.t < b.t1) continue;
+      b.landed = true;
+      coinBurst(b.tx, b.ty);
+      if (window.Sons && Sons.on.pieces) Sons.on.pieces(Math.max(0.3, nearness(b.ty)), panOf(b.tx));
+      if (S.mode === 'race' && Math.hypot(S.x - b.tx, (S.y - b.ty) * 1.25) < L.rayon) { fall('lhuillier'); }
+    }
+    st.bags = st.bags.filter((b) => !b.landed || st.t - b.t1 < 0.4);
+  }
+
+  function coinBurst(x, y) {
+    for (let i = 0; i < 22; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 1.5 + Math.random() * 5;
+      S.coins.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.8, z: 0.3, vz: 5 + Math.random() * 6, spin: Math.random() * 6, vs: 8 + Math.random() * 10 });
+    }
+    puff(x, y, 10, 3);
   }
 
   function raceStep(dt) {
@@ -955,6 +1103,12 @@
       for (const k of ECOLE.positions(S.schoolT || 0)) {
         if (Math.abs(k.y - S.y) < 2 && Math.hypot(k.x - S.x, k.y - S.y) < k.m.hit) { fall('ecole'); return; }
       }
+    }
+
+    // V4 : biathlète qui remonte la piste : le toucher fait tomber
+    if (BIATH) {
+      const b = BIATH.at(S.biathT);
+      if (Math.abs(b.y - S.y) < 1.1 && Math.abs(b.x - S.x) < 1.35) { fall('biathlete'); return; }
     }
 
     // plaques de terre : chute à n'importe quelle vitesse
@@ -1139,6 +1293,13 @@
     // plaques de terre (au sol)
     for (let i = lowerBound(muds, yTop - 4); i < muds.length && muds[i].y < yBot + 4; i++) drawMud(muds[i]);
 
+    // V4 : pièces d'or tombées sur la neige et cibles des Frères Lhuillier (au sol)
+    const v4 = S.mode !== 'home';
+    if (v4) {
+      for (const c of S.groundCoins) if (c.y > yTop && c.y < yBot) drawCoin(wx(c.x), wy(c.y), 0, c.a, 0.75);
+      if (LHU) for (const b of S.lhu.bags) drawTarget(b);
+    }
+
     // objets debout, triés par y
     const items = [];
     for (let i = lowerBound(trees, yTop); i < trees.length && trees[i].y < yBot + 5; i++) {
@@ -1168,9 +1329,30 @@
         items.push({ y: k.y, draw: () => drawSkier(ctx, wx(k.x), wy(k.y), k.m.px, { theta: k.th, plow: k.m.kid, look: k.m.look, t: S.t }) });
       }
     }
+    if (v4 && CANONS) {
+      const on = S.fogT >= 0 && S.fogT < CANONS.C.duree;
+      for (const c of CANONS.list) if (c.y > yTop - 6 && c.y < yBot + 6) items.push({ y: c.y, draw: () => drawCanon(c, on) });
+    }
+    if (v4 && BIATH) {
+      const b = BIATH.at(S.biathT);
+      if (b.y > yTop - 6 && b.y < yBot + 6) items.push({ y: b.y, draw: () => drawBiathlete(ctx, wx(b.x), wy(b.y), 52, b.ph) });
+    }
+    if (v4 && LHU) {
+      const prog = S.lhu.t < 0 ? 0 : Math.min(1, S.lhu.t / 0.8);
+      for (const f of LHU.freres) {
+        if (f.y < yTop - 6 || f.y > yBot + 6) continue;
+        const x = f.xOut + (f.xIn - f.xOut) * prog;
+        const throwing = f.throwT !== undefined && S.lhu.t >= 0 && S.lhu.t - f.throwT < 0.3;
+        items.push({ y: f.y, draw: () => drawBrother(wx(x), wy(f.y), 50, f.cote, throwing) });
+      }
+    }
     items.push({ y: S.y, draw: drawPlayer });
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
+
+    // V4 : sacs en vol et pièces d'or qui retombent (au-dessus de tout)
+    if (v4 && LHU) for (const b of S.lhu.bags) if (!b.landed) drawFlyingBag(b);
+    if (v4) for (const c of S.coins) drawCoin(wx(c.x), wy(c.y), c.z * SCALE, c.spin, 1);
 
     // neige soulevée
     ctx.fillStyle = '#ffffff';
@@ -1179,6 +1361,9 @@
       ctx.beginPath(); ctx.arc(wx(p.x), wy(p.y), p.r * SCALE, 0, Math.PI * 2); ctx.fill();
     }
     ctx.globalAlpha = 1;
+
+    // V4 : nuage des canons à neige, par-dessus la piste et le skieur (mais pas le chrono)
+    if (v4 && CANONS) { const f = fogLevel(S.fogT); if (f > 0) drawFog(f); }
 
     drawHUD();
     drawJoystick();
@@ -1297,6 +1482,302 @@
       ctx.moveTo(gx + 3, gy); ctx.lineTo(gx + 5, gy - 6);
       ctx.stroke();
     }
+  }
+
+  // ---------- V4 : dessins des nouveaux obstacles ----------
+  // Canon à neige : mât sur trépied et tube jaune tourné vers le milieu de la piste ; l'hélice tourne quand il marche
+  function drawCanon(c, on) {
+    const s = SCALE, d = -c.cote;
+    ctx.save();
+    ctx.translate(wx(c.x), wy(c.y));
+    ctx.lineCap = 'round';
+    ctx.fillStyle = 'rgba(60,90,140,0.25)';
+    ctx.beginPath(); ctx.ellipse(0.3 * s, 0.1 * s, 1.1 * s, 0.4 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#37474f'; ctx.lineWidth = 0.22 * s;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -2.6 * s); ctx.stroke();
+    ctx.lineWidth = 0.14 * s;
+    ctx.beginPath(); ctx.moveTo(0, -0.5 * s); ctx.lineTo(-0.7 * s, 0.15 * s); ctx.moveTo(0, -0.5 * s); ctx.lineTo(0.7 * s, 0.15 * s); ctx.stroke();
+    ctx.translate(0, -2.7 * s);
+    ctx.scale(d, 1);
+    ctx.rotate(0.22);
+    // tube
+    ctx.fillStyle = '#16202e';
+    roundRect(ctx, -1.1 * s, -0.62 * s, 2.3 * s, 1.24 * s, 0.35 * s); ctx.fill();
+    ctx.fillStyle = '#fdd835';
+    roundRect(ctx, -1.0 * s, -0.52 * s, 2.1 * s, 1.04 * s, 0.3 * s); ctx.fill();
+    ctx.fillStyle = '#f9a825';
+    ctx.fillRect(-1.0 * s, 0.2 * s, 2.1 * s, 0.25 * s);
+    // buse à l'avant
+    ctx.fillStyle = '#90a4ae';
+    ctx.beginPath(); ctx.ellipse(1.2 * s, 0, 0.22 * s, 0.5 * s, 0, 0, Math.PI * 2); ctx.fill();
+    // arrière : grille et hélice
+    ctx.fillStyle = '#263238';
+    ctx.beginPath(); ctx.ellipse(-1.1 * s, 0, 0.3 * s, 0.66 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#b0bec5'; ctx.lineWidth = 0.08 * s;
+    const a0 = on ? S.t * 25 : 0;
+    for (let k = 0; k < 3; k++) {
+      const a = a0 + k * 2.09;
+      ctx.beginPath(); ctx.moveTo(-1.1 * s, 0); ctx.lineTo(-1.1 * s + Math.cos(a) * 0.25 * s, Math.sin(a) * 0.58 * s); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Nuage de neige : un voile blanc et de gros paquets qui dérivent ; on ne voit plus qu'environ 30 % de l'écran
+  function drawFog(level) {
+    const vis = CANONS.C.visible === undefined ? 0.3 : CANONS.C.visible;
+    ctx.fillStyle = `rgba(242,247,253,${(0.86 - vis) * level})`;
+    ctx.fillRect(0, 0, W, H);
+    const R = Math.max(W, H);
+    for (let i = 0; i < 12; i++) {
+      const sp = 0.4 + hash(i + 3) * 0.8;
+      const x = (hash(i * 1.7) * 1.4 - 0.2) * W + Math.sin(S.t * 0.5 + i) * W * 0.18;
+      const span = H * 1.6;
+      const y = ((hash(i + 7) * span + S.t * 90 * sp) % span) - H * 0.3;
+      const r = (0.22 + hash(i + 11) * 0.25) * R;
+      const grd = ctx.createRadialGradient(x, y, r * 0.1, x, y, r);
+      grd.addColorStop(0, `rgba(255,255,255,${0.6 * level})`);
+      grd.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = grd;
+      ctx.fillRect(x - r, y - r, 2 * r, 2 * r);
+    }
+    // flocons qui filent en travers
+    ctx.fillStyle = `rgba(255,255,255,${0.9 * level})`;
+    for (let i = 0; i < 70; i++) {
+      const x = ((hash(i * 2.3) * W * 1.2 + S.t * (180 + hash(i) * 220) * (i % 2 ? 1 : -1)) % (W * 1.2) + W * 1.2) % (W * 1.2) - W * 0.1;
+      const y = ((hash(i * 5.1) * H + S.t * 140) % H);
+      ctx.beginPath(); ctx.arc(x, y, 1.5 + hash(i * 9.3) * 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // Le biathlète, vu de dos (il remonte la piste) : combinaison noire et jaune, carabine dans le dos,
+  // skis de fond écartés en pas de patineur
+  function drawBiathlete(g, x, y, hPx, ph) {
+    const u = hPx / 52;
+    const BLK = '#15171c', YEL = '#ffd600', OUT = '#0b0d12';
+    g.save();
+    g.translate(x, y);
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    const push = Math.sin(ph); // > 0 : la jambe droite pousse vers l'extérieur ; < 0 : la gauche
+    g.fillStyle = 'rgba(60,90,140,0.25)';
+    g.beginPath(); g.ellipse(0, 2 * u, 20 * u, 5 * u, 0, 0, Math.PI * 2); g.fill();
+    const feet = [-1, 1].map((side) => {
+      const out = Math.max(0, side * push);
+      return { side, x: side * (5 + out * 8) * u, y: -out * 2 * u, out };
+    });
+    const line = (x0, y0, x1, y1) => { g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); };
+    // skis de fond, longs et fins, pointes vers le haut de l'écran
+    for (const f of feet) {
+      const a = f.side * (20 + f.out * 12) * DEG, dx = Math.sin(a), dy = -Math.cos(a);
+      g.strokeStyle = OUT; g.lineWidth = 3.4 * u;
+      line(f.x - dx * 13 * u, f.y - dy * 13 * u, f.x + dx * 25 * u, f.y + dy * 25 * u);
+      g.strokeStyle = YEL; g.lineWidth = 1.9 * u;
+      line(f.x - dx * 12 * u, f.y - dy * 12 * u, f.x + dx * 20 * u, f.y + dy * 20 * u);
+      g.strokeStyle = BLK;
+      line(f.x + dx * 20 * u, f.y + dy * 20 * u, f.x + dx * 24 * u, f.y + dy * 24 * u);
+    }
+    const hipY = -21 * u, shY = -36 * u;
+    // bâtons : plantés derrière lui (plus bas à l'écran), ils poussent ensemble à chaque pas
+    const pp = (Math.sin(ph * 2) + 1) / 2;
+    for (const side of [-1, 1]) {
+      const hx = side * 11 * u, hy = shY + 8 * u + pp * 6 * u;
+      g.strokeStyle = '#9aa3ad'; g.lineWidth = 1.4 * u;
+      line(hx, hy - 3 * u, side * (14 + pp * 3) * u, (5 + pp * 5) * u);
+      g.beginPath(); g.ellipse(side * (14 + pp * 3) * u, (5 + pp * 5) * u, 1.6 * u, 0.7 * u, 0, 0, Math.PI * 2); g.stroke();
+      g.strokeStyle = OUT; g.lineWidth = 5 * u;
+      line(side * 7.5 * u, shY + 2 * u, side * 11 * u, shY + 9 * u); line(side * 11 * u, shY + 9 * u, hx, hy);
+      g.strokeStyle = side > 0 ? BLK : BLK; g.lineWidth = 3.4 * u;
+      line(side * 7.5 * u, shY + 2 * u, side * 11 * u, shY + 9 * u); line(side * 11 * u, shY + 9 * u, hx, hy);
+      g.fillStyle = YEL;
+      g.beginPath(); g.arc(hx, hy, 1.8 * u, 0, Math.PI * 2); g.fill();
+    }
+    // jambes : collant noir à bande jaune
+    for (const f of feet) {
+      const kx = (f.x + f.side * 3.5 * u) * 0.6;
+      g.strokeStyle = OUT; g.lineWidth = 6 * u;
+      line(f.x, f.y - 2 * u, kx, hipY * 0.5); line(kx, hipY * 0.5, f.side * 4 * u, hipY);
+      g.strokeStyle = BLK; g.lineWidth = 4.3 * u;
+      line(f.x, f.y - 2 * u, kx, hipY * 0.5); line(kx, hipY * 0.5, f.side * 4 * u, hipY);
+      g.strokeStyle = YEL; g.lineWidth = 1 * u;
+      line(f.x + f.side * 1.3 * u, f.y - 3 * u, kx + f.side * 1.4 * u, hipY * 0.5);
+      g.fillStyle = OUT;
+      roundRect(g, f.x - 2.6 * u, f.y - 4 * u, 5.2 * u, 5 * u, 1.5 * u); g.fill();
+    }
+    // buste
+    g.fillStyle = OUT;
+    g.beginPath(); g.moveTo(-9 * u, shY - 1 * u); g.lineTo(9 * u, shY - 1 * u); g.lineTo(7 * u, hipY + 2 * u); g.lineTo(-7 * u, hipY + 2 * u); g.closePath(); g.fill();
+    g.fillStyle = BLK;
+    g.beginPath(); g.moveTo(-8 * u, shY); g.lineTo(8 * u, shY); g.lineTo(6.2 * u, hipY + 1 * u); g.lineTo(-6.2 * u, hipY + 1 * u); g.closePath(); g.fill();
+    g.fillStyle = YEL;
+    g.beginPath(); g.moveTo(-8 * u, shY); g.lineTo(-5 * u, shY); g.lineTo(-4.4 * u, hipY + 1 * u); g.lineTo(-6.2 * u, hipY + 1 * u); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(8 * u, shY); g.lineTo(5 * u, shY); g.lineTo(4.4 * u, hipY + 1 * u); g.lineTo(6.2 * u, hipY + 1 * u); g.closePath(); g.fill();
+    // carabine dans le dos, en travers, avec ses bretelles
+    g.strokeStyle = '#3a3f47'; g.lineWidth = 1 * u;
+    line(-6 * u, shY + 0.5 * u, -2 * u, hipY + 1 * u); line(6 * u, shY + 0.5 * u, 2 * u, hipY + 1 * u);
+    g.save();
+    g.translate(0, (shY + hipY) / 2);
+    g.rotate(-0.55);
+    g.fillStyle = OUT;
+    roundRect(g, -12 * u, -1.6 * u, 24 * u, 3.2 * u, 1 * u); g.fill();
+    g.fillStyle = '#4e342e';
+    roundRect(g, -11.4 * u, -2.2 * u, 9 * u, 4.4 * u, 1.4 * u); g.fill();
+    g.fillStyle = '#607d8b';
+    g.fillRect(-2.4 * u, -1 * u, 13.6 * u, 2 * u);
+    g.fillStyle = '#263238';
+    g.fillRect(1 * u, 0.8 * u, 2.4 * u, 2.4 * u);
+    g.restore();
+    // tête vue de dos : bonnet noir à bande jaune
+    const hy = shY - 7.5 * u;
+    g.fillStyle = '#c8996c';
+    g.fillRect(-2.2 * u, shY - 3 * u, 4.4 * u, 3.4 * u);
+    g.fillStyle = OUT;
+    g.beginPath(); g.ellipse(0, hy, 6.4 * u, 7 * u, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#e0ac69';
+    g.beginPath(); g.ellipse(-5.8 * u, hy + 1 * u, 1.4 * u, 2 * u, 0, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.ellipse(5.8 * u, hy + 1 * u, 1.4 * u, 2 * u, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#e0ac69';
+    g.beginPath(); g.ellipse(0, hy, 5.5 * u, 6.2 * u, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = BLK;
+    g.beginPath(); g.ellipse(0, hy - 0.5 * u, 5.8 * u, 6 * u, 0, Math.PI, 0); g.closePath(); g.fill();
+    g.fillRect(-5.8 * u, hy - 0.6 * u, 11.6 * u, 2.2 * u);
+    g.fillStyle = YEL;
+    g.fillRect(-5.8 * u, hy - 2.4 * u, 11.6 * u, 1.6 * u);
+    // il souffle fort : petit nuage de buée à chaque pas
+    const br = ((ph % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    if (br < 1.6) {
+      const k = br / 1.6;
+      g.fillStyle = `rgba(255,255,255,${0.85 * (1 - k)})`;
+      g.beginPath(); g.arc(0, hy - 9 * u - k * 6 * u, (2 + k * 4) * u, 0, Math.PI * 2); g.fill();
+    }
+    g.restore();
+  }
+
+  // Un des Frères Lhuillier : treillis militaire, casquette, un sac de pièces d'or à la main (ou en train de lancer)
+  function drawBrother(x, y, hPx, cote, throwing) {
+    const u = hPx / 52, d = -cote; // d : côté de la piste
+    const g = ctx;
+    const OUT = '#1b1f14', C1 = '#5b6b34', C2 = '#3b4724', C3 = '#8a7a4a';
+    g.save();
+    g.translate(x, y);
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    g.fillStyle = 'rgba(60,90,140,0.25)';
+    g.beginPath(); g.ellipse(2 * u, 1 * u, 13 * u, 4 * u, 0, 0, Math.PI * 2); g.fill();
+    const camo = (x0, y0, w, h) => {
+      g.save();
+      roundRect(g, x0, y0, w, h, 2 * u); g.fillStyle = OUT; g.fill();
+      roundRect(g, x0 + 0.8 * u, y0 + 0.8 * u, w - 1.6 * u, h - 1.6 * u, 1.6 * u); g.fillStyle = C1; g.fill(); g.clip();
+      for (let k = 0; k < 7; k++) {
+        g.fillStyle = k % 2 ? C2 : C3;
+        g.beginPath(); g.ellipse(x0 + hash(k * 3.7 + w) * w, y0 + hash(k * 5.3 + h) * h, 2.6 * u, 1.6 * u, k, 0, Math.PI * 2); g.fill();
+      }
+      g.restore();
+    };
+    // jambes et rangers
+    camo(-7 * u, -17 * u, 6 * u, 15 * u);
+    camo(1 * u, -17 * u, 6 * u, 15 * u);
+    g.fillStyle = '#111';
+    roundRect(g, -8 * u, -3.5 * u, 7.5 * u, 4.5 * u, 1.5 * u); g.fill();
+    roundRect(g, 0.5 * u, -3.5 * u, 7.5 * u, 4.5 * u, 1.5 * u); g.fill();
+    // veste
+    camo(-9 * u, -35 * u, 18 * u, 20 * u);
+    g.fillStyle = '#2e2a1e';
+    g.fillRect(-9 * u, -18 * u, 18 * u, 2 * u);
+    // bras côté sapins : le long du corps
+    g.strokeStyle = OUT; g.lineWidth = 5.4 * u;
+    g.beginPath(); g.moveTo(-d * 8 * u, -32 * u); g.lineTo(-d * 11 * u, -18 * u); g.stroke();
+    g.strokeStyle = C1; g.lineWidth = 3.8 * u;
+    g.beginPath(); g.moveTo(-d * 8 * u, -32 * u); g.lineTo(-d * 11 * u, -18 * u); g.stroke();
+    // bras côté piste : levé pour lancer, ou qui tient un sac
+    const hx = throwing ? d * 13 * u : d * 12 * u, hy = throwing ? -50 * u : -19 * u;
+    g.strokeStyle = OUT; g.lineWidth = 5.4 * u;
+    g.beginPath(); g.moveTo(d * 8 * u, -32 * u); g.lineTo(hx, hy); g.stroke();
+    g.strokeStyle = C1; g.lineWidth = 3.8 * u;
+    g.beginPath(); g.moveTo(d * 8 * u, -32 * u); g.lineTo(hx, hy); g.stroke();
+    if (!throwing) drawSack(g, hx, hy + 5 * u, 5 * u, 0);
+    g.fillStyle = '#c68642';
+    g.beginPath(); g.arc(hx, hy, 2 * u, 0, Math.PI * 2); g.fill();
+    // tête et casquette
+    const hyy = -41 * u;
+    g.fillStyle = OUT;
+    g.beginPath(); g.arc(0, hyy, 6.6 * u, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#d9a066';
+    g.beginPath(); g.arc(0, hyy, 5.8 * u, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#111';
+    g.beginPath(); g.arc(-2 * u, hyy + 0.5 * u, 0.8 * u, 0, Math.PI * 2); g.arc(2 * u, hyy + 0.5 * u, 0.8 * u, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#4a2e1a'; g.lineWidth = 1 * u;
+    g.beginPath(); g.moveTo(-2.4 * u, hyy + 3 * u); g.quadraticCurveTo(0, hyy + 5 * u, 2.4 * u, hyy + 3 * u); g.stroke();
+    g.fillStyle = '#3b2a1a';
+    g.fillRect(-2.6 * u, hyy + 2.2 * u, 5.2 * u, 0.9 * u); // moustache
+    g.fillStyle = C2;
+    g.beginPath(); g.ellipse(0, hyy - 2.5 * u, 6.4 * u, 4.4 * u, 0, Math.PI, 0); g.closePath(); g.fill();
+    g.fillStyle = C3;
+    g.beginPath(); g.ellipse(-2 * u, hyy - 4.5 * u, 2 * u, 1.2 * u, 0.3, 0, Math.PI * 2); g.fill();
+    g.fillStyle = OUT;
+    g.fillRect(-7 * u, hyy - 3 * u, 14 * u, 1.6 * u);
+    g.restore();
+  }
+
+  // Sac de toile brune fermé par une ficelle, marqué d'une pièce d'or
+  function drawSack(g, x, y, r, rot) {
+    g.save();
+    g.translate(x, y); g.rotate(rot);
+    g.fillStyle = '#3e2a14';
+    g.beginPath(); g.ellipse(0, 0.25 * r, r * 1.05, r * 0.95, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#a0723c';
+    g.beginPath(); g.ellipse(0, 0.25 * r, r * 0.9, r * 0.8, 0, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.moveTo(-0.35 * r, -0.5 * r); g.lineTo(-0.5 * r, -1.0 * r); g.lineTo(0.5 * r, -1.0 * r); g.lineTo(0.35 * r, -0.5 * r); g.closePath(); g.fill();
+    g.strokeStyle = '#5d3a17'; g.lineWidth = Math.max(1, r * 0.14);
+    g.beginPath(); g.moveTo(-0.4 * r, -0.55 * r); g.lineTo(0.4 * r, -0.55 * r); g.stroke();
+    g.fillStyle = '#ffca28';
+    g.beginPath(); g.arc(0, 0.3 * r, r * 0.38, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#e09b00';
+    g.beginPath(); g.arc(0, 0.3 * r, r * 0.22, 0, Math.PI * 2); g.fill();
+    g.restore();
+  }
+
+  function drawFlyingBag(b) {
+    const p = Math.max(0, Math.min(1, (S.lhu.t - b.t0) / (b.t1 - b.t0)));
+    const gx = b.fx + (b.tx - b.fx) * p, gy = b.fy + (b.ty - b.fy) * p;
+    const h = Math.sin(Math.PI * p) * (3 + Math.hypot(b.tx - b.fx, b.ty - b.fy) * 0.15) + (1 - p) * 2;
+    ctx.fillStyle = 'rgba(60,90,140,0.25)';
+    ctx.beginPath(); ctx.ellipse(wx(gx), wy(gy), 0.7 * SCALE * (0.6 + p * 0.4), 0.3 * SCALE, 0, 0, Math.PI * 2); ctx.fill();
+    drawSack(ctx, wx(gx), wy(gy) - h * SCALE, 0.85 * SCALE, b.spin + p * 5);
+  }
+
+  // Cible au sol : elle apparaît au lancer et se resserre jusqu'à la chute du sac
+  function drawTarget(b) {
+    const L = LHU.L, now = S.lhu.t;
+    const p = Math.max(0, Math.min(1, (now - b.t0) / (b.t1 - b.t0)));
+    const a = b.landed ? Math.max(0, 1 - (now - b.t1) / 0.4) : 0.45 + 0.5 * p;
+    const x = wx(b.tx), y = wy(b.ty), r = L.rayon * SCALE, ky = 0.8;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = 'rgba(229,57,53,0.55)';
+    ctx.beginPath(); ctx.ellipse(x, y, r, r * ky, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath(); ctx.ellipse(x, y, r * 0.66, r * 0.66 * ky, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#e53935';
+    ctx.beginPath(); ctx.ellipse(x, y, r * 0.33, r * 0.33 * ky, 0, 0, Math.PI * 2); ctx.fill();
+    if (!b.landed) {
+      const rr = r * (1.8 - 0.8 * p);
+      ctx.strokeStyle = '#c62828'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.ellipse(x, y, rr, rr * ky, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Pièce d'or (z : hauteur au-dessus de la neige, en pixels ; spin : la pièce tourne sur elle-même)
+  function drawCoin(x, y, z, spin, k) {
+    const r = 0.32 * SCALE * k, w = Math.max(0.25, Math.abs(Math.cos(spin)));
+    if (z > 0) {
+      ctx.fillStyle = 'rgba(60,90,140,0.2)';
+      ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = '#b07800';
+    ctx.beginPath(); ctx.ellipse(x, y - z, r * w + 1, r + 1, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffca28';
+    ctx.beginPath(); ctx.ellipse(x, y - z, r * w, r, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff3b0';
+    ctx.beginPath(); ctx.ellipse(x - r * w * 0.3, y - z - r * 0.3, r * w * 0.3, r * 0.25, 0, 0, Math.PI * 2); ctx.fill();
   }
 
   function drawTreeSprite(t) {
@@ -1732,6 +2213,8 @@
           if (e.y < top || e.y > bot) return m;
           return Math.max(m, 1 - Math.min(1, Math.abs(e.y - S.y) / (viewH() * 1.2)));
         }, 0) : 0,
+        // V4 : souffle des canons à neige pendant qu'ils marchent, plus fort quand on est près d'eux
+        canon: (CANONS && S.mode !== 'home') ? fogLevel(S.fogT) * Math.max(0.35, 1 - Math.min(1, Math.max(0, Math.max(CANONS.top - S.y, S.y - CANONS.bot)) / 60)) : 0,
         progress: Math.max(0, Math.min(1, S.y / FINISH)),
         ambient: S.mode === 'race' || S.mode === 'countdown'
       });
@@ -1748,5 +2231,5 @@
   requestAnimationFrame(frame);
 
   // Accès pour les tests automatiques et le dessin des icônes
-  window.PTPSC = { drawSkier, state: S, input, track: TRACK, bumps, plows, muds, ecole: ECOLE, skis: SKIS, setSki: (id) => { ski = SKIS.find((k) => k.id === id) || ski; }, cfg: CFG, step, fmt, resetRace, goHome, showScreen };
+  window.PTPSC = { drawSkier, state: S, input, track: TRACK, bumps, plows, muds, ecole: ECOLE, canons: CANONS, biathlete: BIATH, lhuillier: LHU, skis: SKIS, setSki: (id) => { ski = SKIS.find((k) => k.id === id) || ski; }, cfg: CFG, step, fmt, resetRace, goHome, showScreen };
 })();

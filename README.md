@@ -1,4 +1,4 @@
-# Pas Très Pentu Ski Cup — V3
+# Pas Très Pentu Ski Cup — V4
 
 Petit jeu de ski en famille, jouable dans le navigateur d'un téléphone (portrait) ou d'un ordinateur.
 
@@ -36,10 +36,24 @@ Nouveautés de la V3 :
   sur les grands écrans, une bande où le skieur remonte au tire-fesses.
 - Arrivée : traces figées, arrêt dans le bas de l'aire d'arrivée, bras levés une fois arrêté. Bruitages plus doux.
 
+Nouveautés de la V4 : les derniers obstacles
+- **Canons à neige** (« Canons à neige ! », vers 300 m, juste après le 1er champ de bosses) : quatre canons au bord
+  de la piste se mettent en marche à l'approche du skieur et soufflent pendant 6,5 s. Un nuage de neige couvre l'écran
+  et ne laisse voir qu'environ 30 % de la piste et du skieur. Rien ne fait tomber en soi, mais sapins et virage
+  deviennent difficiles à voir. On entend le souffle des canons.
+- **Le biathlète** (« Martin Fourcade ! », vers 500 m, avant l'école de ski) : en combinaison noire et jaune, carabine
+  dans le dos, il remonte la piste à contresens en pas de patineur (11 km/h), en zigzag d'un bord à l'autre.
+  On entend ses pas et son souffle. Le toucher fait tomber.
+- **Les Frères Lhuillier** (« Les frères Lhuillier ! », vers 1 000 m, avant le 2e champ de bosses) : deux frères en
+  treillis sortent des sapins, un de chaque côté, et lancent des sacs de pièces d'or là où va le skieur. Une cible
+  apparaît au sol 1 s avant la chute du sac ; être dedans à ce moment fait tomber. Le sac éclate en gerbe de pièces
+  d'or qui restent sur la neige.
+- Rappel V3.4 : 2e champ de bosses à 1 100 m ; Père Fourcade avec la faute de carre « Rebond ».
+
 ## Fichiers
 - `index.html` : la page et les écrans
 - `js/config.js` : adresse et clé publique de la base des scores (Supabase)
-- `js/piste.js` : le fichier de tronçons (tracé de la piste, champs de bosses, chasse-neige, école de ski, plaques de terre)
+- `js/piste.js` : le fichier de tronçons (tracé de la piste, champs de bosses, chasse-neige, canons à neige, biathlète, école de ski, Frères Lhuillier, plaques de terre)
 - `js/game.js` : le jeu (physique, dessins, commandes) ; réglages en haut du fichier (`CFG`)
 - `js/sons.js` : les bruitages (Web Audio)
 - `js/famille.js` : prénom, code famille, classement et podium
