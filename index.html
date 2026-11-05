@@ -85,6 +85,10 @@
     #screen-board .card { max-width: 380px; }
     #btn-son { position: absolute; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 6; width: 48px; height: 48px;
       border-radius: 50%; border: 0; background: rgba(27,42,68,.75); color: #fff; font-size: 22px; line-height: 48px; padding: 0; cursor: pointer; }
+    #music-hint { position: absolute; right: 66px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 6; margin: 0; padding: 6px 12px;
+      border-radius: 16px; background: rgba(27,42,68,.75); color: #fff; font-size: 13px; font-weight: 700; pointer-events: none; animation: hintpulse 1.6s ease-in-out infinite; }
+    #music-hint[hidden] { display: none; }
+    @keyframes hintpulse { 50% { transform: scale(1.06); } }
     .version { position: absolute; left: 12px; bottom: calc(8px + env(safe-area-inset-bottom)); margin: 0; font-size: 12px; color: #8193b0; }
     /* V3 : choix des skis */
     #screen-skis .card { max-width: 400px; gap: 12px; }
@@ -118,7 +122,7 @@
     .podium .p3 .st { height: 40px; background: linear-gradient(#e7a873, #c27a3e); }
     .podium .p.empty .nm, .podium .p.empty .tm { color: #8193b0; font-weight: 700; }
     .podium-msg { grid-column: 1 / -1; align-self: center; margin: 0; font-size: 16px; font-weight: 800; color: #41526f; }
-    #screen-home > :not(.vercors):not(.version) { position: relative; }
+    #screen-home > :not(.vercors):not(.version):not(#music-hint) { position: relative; }
     #screen-home .hint { font-size: 14px; }
     #tirefesses { display: none; position: fixed; top: 0; bottom: 0; right: max(16px, calc((100vw - 480px) / 4 - 80px)); width: 160px; height: 100%; }
     @media (min-width: 860px) { body.accueil #tirefesses { display: block; } }
@@ -153,7 +157,8 @@
       <button class="btn btn-link" id="home-board-btn">🏆 Classement de la famille</button>
       <p class="hint">Pose ton pouce et glisse :<br><b>← →</b> tourner · <b>↓</b> schuss · <b>↑</b> chasse-neige<br>Évite les sapins, 1&nbsp;500&nbsp;m en moins de 2&nbsp;min&nbsp;!</p>
       <button class="tiny" id="home-change-code" type="button">Changer de code famille</button>
-      <p class="version">version 3.1</p>
+      <p class="version">version 3.2</p>
+      <p id="music-hint" hidden>🎵 Touche l'écran pour la musique</p>
     </section>
 
     <section id="screen-skis" class="screen dim">
@@ -220,18 +225,26 @@
   <canvas id="tirefesses" aria-hidden="true"></canvas>
   <div id="rotate">Tourne ton téléphone en mode portrait 📱</div>
 
-  <script src="js/config.js?v=3.1"></script>
-  <script src="js/piste.js?v=3.1"></script>
-  <script src="js/sons.js?v=3.1"></script>
-  <script src="js/famille.js?v=3.1"></script>
-  <script src="js/game.js?v=3.1"></script>
-  <script src="js/accueil.js?v=3.1"></script>
+  <script src="js/config.js?v=3.2"></script>
+  <script src="js/piste.js?v=3.2"></script>
+  <script src="js/sons.js?v=3.2"></script>
+  <script src="js/famille.js?v=3.2"></script>
+  <script src="js/game.js?v=3.2"></script>
+  <script src="js/accueil.js?v=3.2"></script>
   <script>
     (() => {
       const b = document.getElementById('btn-son');
       if (!window.Sons || !Sons.supported()) { b.style.display = 'none'; return; }
       Sons.onChange((m) => { b.textContent = m ? '🔇' : '🔊'; b.setAttribute('aria-label', m ? 'Remettre le son' : 'Couper le son'); });
-      b.addEventListener('click', () => { Sons.unlock(); Sons.toggle(); b.blur(); });
+      // Tant que le navigateur n'a pas encore laissé sortir le son, ce premier appui sert à
+      // lancer la musique, pas à la couper.
+      // (l'état est noté avant que le premier toucher, ailleurs dans la page, ne relance le son)
+      let wasOn = null;
+      window.addEventListener('pointerdown', (e) => { if (e.target === b) wasOn = Sons.running(); }, true);
+      b.addEventListener('click', () => {
+        const on = wasOn === null ? Sons.running() : wasOn; wasOn = null;
+        Sons.unlock(); if (on || Sons.isMuted()) Sons.toggle(); b.blur();
+      });
     })();
   </script>
   <script>

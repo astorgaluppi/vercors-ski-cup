@@ -12,7 +12,7 @@ window.Sons = (() => {
   let glide = null, crowd = null;
   let bellTimer = 0, cheer = null, reverseTimer = 0;
   let clapBuses = [];
-  const listeners = [];
+  const listeners = [], stateListeners = [];
 
   function supported() { return !!(window.AudioContext || window.webkitAudioContext); }
 
@@ -29,6 +29,7 @@ window.Sons = (() => {
       } catch (e) { /* ignoré */ }
       const AC = window.AudioContext || window.webkitAudioContext;
       ac = new AC();
+      ac.onstatechange = () => stateListeners.forEach((f) => f());
       master = ac.createGain();
       master.gain.value = muted ? 0 : 1;
       const comp = ac.createDynamicsCompressor();
@@ -387,6 +388,9 @@ window.Sons = (() => {
   return {
     unlock, update, on, supported, music,
     isMuted: () => muted,
+    // vrai quand le navigateur laisse vraiment sortir le son
+    running: () => !!ac && ac.state === 'running',
+    onState(f) { stateListeners.push(f); },
     setMuted,
     toggle() { setMuted(!muted); },
     onChange(f) { listeners.push(f); f(muted); }
