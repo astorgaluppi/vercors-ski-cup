@@ -31,7 +31,7 @@
     startY: -9, gateY: -6.5,
     stopRadius: 24, stopOffset: 32,
     skidDec: 45 * KMH,
-    bannerTime: 2, bannerCooldown: 5, splitShowTime: 3,
+    bannerTime: 2, bannerCooldown: 5, bannerLead: 1.5, splitShowTime: 3,
     // V2 : chasse-neige garés (taille en m, angle de biais)
     plowScale: 1.8,            // taille des chasse-neige (1 = taille réelle d'une dameuse moyenne)
     plowW: 3.4 * 1.8, plowL: 6.8 * 1.8, plowAngle: 28 * DEG, plowMargin: 0.3,
@@ -255,18 +255,27 @@
     return Math.max(0, Math.min(1, t / 1, (CANONS.C.duree - t) / 1.2));
   };
 
-  // V4 : le biathlète remonte la piste à contresens, en zigzag d'un bord à l'autre
+  // V4 : le biathlète remonte la piste à contresens. V4.1 : tant qu'il est devant le joueur (plus bas que lui),
+  // il se décale vers lui pour lui foncer dessus, à vitesse de côté limitée : on peut l'esquiver en tournant.
   const BIATH = (() => {
     const B = P.biathlete;
     if (!B) return null;
     return {
       B,
-      // position t secondes après sa mise en route ; ph : phase du pas de patineur
-      at(t) {
-        const y = B.debut - B.vitesse * KMH * t;
-        const hw = TRACK.halfW(y), ph = t * Math.PI * 2 * 0.75;
-        const x = TRACK.center(y) + Math.sin(t * Math.PI * 2 / B.periode + 0.7) * hw * B.largeur + Math.sin(ph) * 0.35;
-        return { x, y, ph };
+      // état de départ : bx = position en travers sans le balancement du pas ; ph : phase du pas de patineur
+      init() { return { t: 0, bx: TRACK.center(B.debut), x: TRACK.center(B.debut), y: B.debut, ph: 0 }; },
+      update(b, dt, px, py) {
+        b.t += dt;
+        b.y = B.debut - B.vitesse * KMH * b.t;
+        b.ph = b.t * Math.PI * 2 * 0.75;
+        const c = TRACK.center(b.y), hw = TRACK.halfW(b.y) - 1.2;
+        if (b.y > py) {
+          const aim = Math.max(c - hw, Math.min(c + hw, px));
+          const maxd = B.lateral * KMH * dt;
+          b.bx += Math.max(-maxd, Math.min(maxd, aim - b.bx));
+        }
+        b.bx = Math.max(c - hw, Math.min(c + hw, b.bx));
+        b.x = b.bx + Math.sin(b.ph) * 0.35;
       }
     };
   })();
@@ -765,7 +774,7 @@
     endTimer: 0, fallT: 0, skidSide: 1, lift: 0,
     banner: null, bannerSeen: {}, splitMsg: null,
     particles: [], trail: [], lastTrailY: 0, gateOpen: 0, announced: {},
-    fogT: -1, biathT: 0, biathStep: 0, lhu: { t: -1, next: 0, n: 0, bags: [] }, coins: [], groundCoins: []
+    fogT: -1, bia: BIATH ? BIATH.init() : null, lhu: { t: -1, next: 0, n: 0, bags: [] }, coins: [], groundCoins: []
   };
 
   function resetRace() {
@@ -780,7 +789,7 @@
     S.camX = S.x; S.camY = S.y - viewH() * CFG.skierScreenFrac;
     S.lastBeep = null; S.heavy = false; S.turnAmt = 0; S.schoolT = 0; S.edgeT = 0; S.edgeDir = 0; S.edgeLast = 0;
     // V4 : canons à neige (fogT < 0 : pas encore en marche), biathlète, Frères Lhuillier
-    S.fogT = -1; S.biathT = 0; S.biathStep = 0;
+    S.fogT = -1; S.bia = BIATH ? BIATH.init() : null;
     S.lhu = { t: -1, next: 0, n: 0, bags: [] }; S.coins = []; S.groundCoins = [];
     S.ref = window.Famille ? Famille.reference() : null; // record de la famille au départ
     input.keys.clear(); input.touch = null;
@@ -876,8 +885,10 @@
     S.camX += (target - S.camX) * k;
     S.camY = ty;
 
-    // banderole quand un champ de bosses entre par le bas
-    const bottom = S.camY + viewH();
+    // banderole d'annonce : V4.1, elle arrive environ 1,5 s avant que l'obstacle entre dans l'écran par le bas
+    // (et pas au moment où il entre), pour qu'on ait le temps de la lire avant de l'aborder
+    const lead = Math.max(12, S.v * CFG.bannerLead);
+    const bottom = S.camY + viewH() + lead;
     for (const f of P.champsDeBosses) {
       if (!S.announced[f.debut] && bottom >= f.debut - 1 && S.y < f.debut + f.longueur && (S.mode === 'race' || S.mode === 'countdown')) {
         S.announced[f.debut] = true;
@@ -892,10 +903,11 @@
     if (S.mode === 'race' || S.mode === 'countdown') {
       if (CANONS && !S.announced.canons && bottom >= CANONS.top - 1 && S.y < CANONS.bot) { S.announced.canons = true; showBanner('Canons à neige !'); }
       if (BIATH && !S.announced.biath) {
-        const b = BIATH.at(S.biathT);
-        if (bottom >= b.y - 1 && S.y < b.y) { S.announced.biath = true; showBanner('Martin Fourcade !'); }
+        // il vient vers nous : on compte aussi sa propre vitesse
+        const b = S.bia;
+        if (bottom + BIATH.B.vitesse * KMH * CFG.bannerLead >= b.y - 1 && S.y < b.y) { S.announced.biath = true; showBanner('Martin Fourcade !'); }
       }
-      if (LHU && !S.announced.lhu && S.lhu.t >= 0) { S.announced.lhu = true; showBanner('Les frères Lhuillier !'); }
+      if (LHU && !S.announced.lhu && bottom >= LHU.freres[0].y - 1 && S.y < LHU.L.fin) { S.announced.lhu = true; showBanner('Les frères Lhuillier !'); }
     }
     if (HEAVY && !S.announced.heavy && bottom >= HEAVY.debut - 1 && S.y < HEAVY.fin && (S.mode === 'race' || S.mode === 'countdown')) {
       S.announced.heavy = true;
@@ -933,9 +945,8 @@
     }
     // biathlète : il se met en route quand le joueur passe « depart » ; un pas de patineur à chaque demi-tour
     if (BIATH && S.y >= BIATH.B.depart) {
-      const prev = BIATH.at(S.biathT).ph;
-      S.biathT += dt;
-      const b = BIATH.at(S.biathT);
+      const b = S.bia, prev = b.ph;
+      BIATH.update(b, dt, S.x, S.y);
       if (Math.floor(b.ph / Math.PI) > Math.floor(prev / Math.PI) && window.Sons && Sons.on.pas) {
         const vol = nearness(b.y), n = Math.floor(b.ph / Math.PI);
         if (vol > 0) { Sons.on.pas(vol, panOf(b.x)); if (n % 2 === 0) Sons.on.souffle(vol, panOf(b.x)); }
@@ -1111,7 +1122,7 @@
 
     // V4 : biathlète qui remonte la piste : le toucher fait tomber
     if (BIATH) {
-      const b = BIATH.at(S.biathT);
+      const b = S.bia;
       if (Math.abs(b.y - S.y) < 1.1 && Math.abs(b.x - S.x) < 1.35) { fall('biathlete'); return; }
     }
 
@@ -1338,7 +1349,7 @@
       for (const c of CANONS.list) if (c.y > yTop - 6 && c.y < yBot + 6) items.push({ y: c.y, draw: () => drawCanon(c, on) });
     }
     if (v4 && BIATH) {
-      const b = BIATH.at(S.biathT);
+      const b = S.bia;
       if (b.y > yTop - 6 && b.y < yBot + 6) items.push({ y: b.y, draw: () => drawBiathlete(ctx, wx(b.x), wy(b.y), 52, b.ph) });
     }
     if (v4 && LHU) {
