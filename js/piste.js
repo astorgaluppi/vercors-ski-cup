@@ -12,7 +12,7 @@ window.PISTE_V1 = {
     { longueur: 70,  angle: 25 },     // diagonale dans le nuage des canons à neige
     { longueur: 50,  angle: 0 },
     { longueur: 70,  angle: -25 },
-    { longueur: 140, angle: 0 },     // intermédiaire 1 (500 m) + biathlète (vers 680 m)
+    { longueur: 140, angle: 0 },     // intermédiaire 1 (500 m) + biathlète (vers 615 m)
     { longueur: 100, angle: 30 },
     { longueur: 80,  angle: 0 },
     { longueur: 80,  angle: -30 },
@@ -62,11 +62,11 @@ window.PISTE_V1 = {
     { y: 446, x: -0.05 }
   ],
 
-  // V4 — Le biathlète (« Martin Fourcade ! »), vers 680 m (V4.1 : déplacé dans le long secteur sans obstacle avant
-  // l'école de ski) : il remonte la piste à contresens en pas de patineur. debut : hauteur d'où il part (m) ;
+  // V4 — Le biathlète (« Martin Fourcade ! »), vers 615 m (V4.1 : déplacé dans le long secteur sans obstacle, avant
+  // l'entrée du passage secret de la V5 vers 690 m) : il remonte la piste à contresens en pas de patineur. debut : hauteur d'où il part (m) ;
   // depart : il se met en route quand le joueur passe cette hauteur ; vitesse : vitesse de montée (km/h) ;
   // lateral : vitesse (km/h) à laquelle il se décale vers le joueur, tant qu'il est devant lui.
-  biathlete: { debut: 700, depart: 590, vitesse: 11, lateral: 11 },
+  biathlete: { debut: 632, depart: 522, vitesse: 11, lateral: 11 },
 
   // V4 — Les Frères Lhuillier (« Les frères Lhuillier ! »), vers 1 000 m, juste après la sortie du futur passage
   // secret (V5) et avant le 2e champ de bosses. Deux frères en treillis sortent des sapins, un de chaque côté, et

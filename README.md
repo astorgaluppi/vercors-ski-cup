@@ -41,7 +41,7 @@ Nouveautés de la V4 : les derniers obstacles
   de la piste se mettent en marche à l'approche du skieur et soufflent pendant 6,5 s. Un nuage de neige couvre l'écran
   et ne laisse voir qu'environ 30 % de la piste et du skieur. Rien ne fait tomber en soi, mais sapins et virage
   deviennent difficiles à voir, et trois bosses isolées se cachent dans le nuage (V4.1). On entend le souffle des canons.
-- **Le biathlète** (« Martin Fourcade ! », vers 680 m depuis la V4.1, dans le long secteur avant l'école de ski) :
+- **Le biathlète** (« Martin Fourcade ! », vers 615 m depuis la V4.1, dans le long secteur vide, avant l'entrée du futur passage secret) :
   en combinaison noire et jaune, carabine dans le dos, il remonte la piste à contresens en pas de patineur (11 km/h).
   Tant qu'il est devant le joueur, il se décale vers lui pour lui foncer dessus : il faut l'esquiver au dernier moment.
   On entend ses pas et son souffle. Le toucher fait tomber.
