@@ -8,8 +8,8 @@ window.PISTE_V1 = {
   largeur: 24,             // largeur du couloir (environ 70 % de l'écran)
   intermediaires: [500, 1000],
   troncons: [
-    { longueur: 370, angle: 0 },     // départ + 1er champ de bosses (200 m) + canons à neige (300 m)
-    { longueur: 70,  angle: 25 },
+    { longueur: 370, angle: 0 },     // départ + 1er champ de bosses (200 m) + canons à neige (365 m)
+    { longueur: 70,  angle: 25 },     // diagonale dans le nuage des canons à neige
     { longueur: 50,  angle: 0 },
     { longueur: 70,  angle: -25 },   // biathlète (vers 500 m)
     { longueur: 140, angle: 0 },     // intermédiaire 1 (500 m)
@@ -44,14 +44,23 @@ window.PISTE_V1 = {
   // descente : mètres de pente descendus à chaque traversée ; marge : distance gardée avec les sapins (m).
   ecoleDeSki: { debut: 815, depart: 745, vitesse: 8, enfants: 6, ecart: 5, descente: 7, marge: 2.5 },
 
-  // V4 — Canons à neige (« Canons à neige ! »), juste après le 1er champ de bosses, vers 300 m.
+  // V4 — Canons à neige (« Canons à neige ! »), vers 365 m (V4.1 : 100 m plus loin), pour que le nuage couvre aussi
+  // le début du secteur en diagonale (370 à 440 m).
   // Les canons se mettent en marche quand le joueur passe « depart » et soufflent pendant « duree » secondes :
   // un nuage de neige couvre l'écran et ne laisse voir qu'environ 30 % de la piste (« visible »).
   // canons : y = hauteur du canon (m), cote : -1 = bord gauche, 1 = bord droit.
   canonsANeige: {
-    depart: 262, duree: 6.5, visible: 0.3,
-    canons: [{ y: 272, cote: -1 }, { y: 292, cote: 1 }, { y: 312, cote: -1 }, { y: 332, cote: 1 }]
+    depart: 365, duree: 6.5, visible: 0.3,
+    canons: [{ y: 375, cote: -1 }, { y: 395, cote: 1 }, { y: 415, cote: -1 }, { y: 435, cote: 1 }]
   },
+
+  // V4.1 — Bosses isolées, cachées dans le nuage des canons à neige (pas de banderole).
+  // x : position en travers (-1 = bord gauche, 1 = bord droit). Mêmes règles de chute que les champs de bosses.
+  bossesIsolees: [
+    { y: 392, x: -0.30 },
+    { y: 418, x: 0.35 },
+    { y: 446, x: -0.05 }
+  ],
 
   // V4 — Le biathlète (« Martin Fourcade ! »), vers 500 m, avant l'école de ski : il remonte la piste à
   // contresens en pas de patineur. debut : hauteur d'où il part (m) ; depart : il se met en route quand le joueur

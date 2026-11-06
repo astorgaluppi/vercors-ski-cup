@@ -171,6 +171,10 @@
       for (let n = lanes; n < f.nombre; n++) add((hw) => -hw + margin + rnd() * (2 * hw - 2 * margin), false);
       bumps.push(...placed);
     }
+    // V4.1 : quelques bosses isolées, cachées dans le nuage des canons à neige
+    for (const b of P.bossesIsolees || []) {
+      bumps.push({ x: TRACK.center(b.y) + b.x * TRACK.halfW(b.y), y: b.y, r: CFG.bumpRadius, hit: false });
+    }
     bumps.sort((a, b) => a.y - b.y);
   })();
 

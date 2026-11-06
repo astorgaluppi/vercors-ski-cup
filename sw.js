@@ -1,6 +1,6 @@
 // Fonctionnement hors connexion : réseau d'abord, copie locale si pas de réseau.
-const CACHE = 'ptpsc-4.0'; // à changer à chaque nouvelle version
-const FILES = ['./', 'index.html', 'js/config.js?v=4.0', 'js/piste.js?v=4.0', 'js/sons.js?v=4.0', 'js/famille.js?v=4.0', 'js/game.js?v=4.0', 'js/accueil.js?v=4.0', 'img/logo-titre.png', 'manifest.webmanifest',
+const CACHE = 'ptpsc-4.1'; // à changer à chaque nouvelle version
+const FILES = ['./', 'index.html', 'js/config.js?v=4.1', 'js/piste.js?v=4.1', 'js/sons.js?v=4.1', 'js/famille.js?v=4.1', 'js/game.js?v=4.1', 'js/accueil.js?v=4.1', 'img/logo-titre.png', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
