@@ -1625,21 +1625,9 @@
     g.fillStyle = YEL;
     g.beginPath(); g.moveTo(-8 * u, shY); g.lineTo(-5 * u, shY); g.lineTo(-4.4 * u, hipY + 1 * u); g.lineTo(-6.2 * u, hipY + 1 * u); g.closePath(); g.fill();
     g.beginPath(); g.moveTo(8 * u, shY); g.lineTo(5 * u, shY); g.lineTo(4.4 * u, hipY + 1 * u); g.lineTo(6.2 * u, hipY + 1 * u); g.closePath(); g.fill();
-    // carabine dans le dos, en travers, avec ses bretelles
+    // bretelles de la carabine
     g.strokeStyle = '#3a3f47'; g.lineWidth = 1 * u;
     line(-6 * u, shY + 0.5 * u, -2 * u, hipY + 1 * u); line(6 * u, shY + 0.5 * u, 2 * u, hipY + 1 * u);
-    g.save();
-    g.translate(0, (shY + hipY) / 2);
-    g.rotate(-0.55);
-    g.fillStyle = OUT;
-    roundRect(g, -12 * u, -1.6 * u, 24 * u, 3.2 * u, 1 * u); g.fill();
-    g.fillStyle = '#4e342e';
-    roundRect(g, -11.4 * u, -2.2 * u, 9 * u, 4.4 * u, 1.4 * u); g.fill();
-    g.fillStyle = '#607d8b';
-    g.fillRect(-2.4 * u, -1 * u, 13.6 * u, 2 * u);
-    g.fillStyle = '#263238';
-    g.fillRect(1 * u, 0.8 * u, 2.4 * u, 2.4 * u);
-    g.restore();
     // tête vue de dos : bonnet noir à bande jaune
     const hy = shY - 7.5 * u;
     g.fillStyle = '#c8996c';
@@ -1656,6 +1644,25 @@
     g.fillRect(-5.8 * u, hy - 0.6 * u, 11.6 * u, 2.2 * u);
     g.fillStyle = YEL;
     g.fillRect(-5.8 * u, hy - 2.4 * u, 11.6 * u, 1.6 * u);
+    // carabine dans le dos (V4.1 : plus grande et plus contrastée) : crosse en bois clair près de la hanche gauche,
+    // canon gris clair qui dépasse au-dessus de l'épaule droite, avec un liseré blanc pour ressortir sur le noir
+    g.save();
+    g.translate(1 * u, (shY + hipY) / 2 - 2 * u);
+    g.rotate(-1.0);
+    g.fillStyle = '#ffffff';
+    roundRect(g, -17 * u, -3.3 * u, 13 * u, 6.6 * u, 2 * u); g.fill();
+    roundRect(g, -5 * u, -2.1 * u, 26.5 * u, 4.2 * u, 1.2 * u); g.fill();
+    g.fillStyle = '#c47a3a';
+    roundRect(g, -16.2 * u, -2.5 * u, 11.6 * u, 5 * u, 1.6 * u); g.fill();
+    g.fillStyle = '#8d5524';
+    g.fillRect(-15 * u, -0.4 * u, 9 * u, 0.9 * u);
+    g.fillStyle = '#b0bec5';
+    g.fillRect(-4.5 * u, -1.3 * u, 25.3 * u, 2.6 * u);
+    g.fillStyle = '#263238';
+    g.fillRect(-5 * u, -1.8 * u, 7 * u, 3.6 * u);
+    g.fillRect(-1 * u, 1.6 * u, 2.6 * u, 3.4 * u);
+    g.fillRect(18.5 * u, -2 * u, 1.6 * u, 4 * u);
+    g.restore();
     // il souffle fort : petit nuage de buée à chaque pas
     const br = ((ph % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
     if (br < 1.6) {
@@ -1719,7 +1726,9 @@
     g.fillStyle = '#111';
     g.beginPath(); g.arc(-2 * u, hyy + 0.5 * u, 0.8 * u, 0, Math.PI * 2); g.arc(2 * u, hyy + 0.5 * u, 0.8 * u, 0, Math.PI * 2); g.fill();
     g.strokeStyle = '#4a2e1a'; g.lineWidth = 1 * u;
-    g.beginPath(); g.moveTo(-2.4 * u, hyy + 3 * u); g.quadraticCurveTo(0, hyy + 5 * u, 2.4 * u, hyy + 3 * u); g.stroke();
+    // visage fermé de soldat : bouche droite, sourcils froncés
+    g.beginPath(); g.moveTo(-2 * u, hyy + 3.9 * u); g.lineTo(2 * u, hyy + 3.9 * u); g.stroke();
+    g.beginPath(); g.moveTo(-3.2 * u, hyy - 1.6 * u); g.lineTo(-0.9 * u, hyy - 0.7 * u); g.moveTo(3.2 * u, hyy - 1.6 * u); g.lineTo(0.9 * u, hyy - 0.7 * u); g.stroke();
     g.fillStyle = '#3b2a1a';
     g.fillRect(-2.6 * u, hyy + 2.2 * u, 5.2 * u, 0.9 * u); // moustache
     g.fillStyle = C2;
