@@ -246,36 +246,66 @@ window.Sons = (() => {
   // Un souffle grave qui monte et retombe en rafales irrégulières, et de temps en temps un sifflement aigu
   // qui glisse (le vent dans les crêtes). Il démarre au premier toucher de l'écran et s'arrête au départ de la course.
   // (Les noms « music » sont gardés pour ne rien changer au reste du jeu.)
-  let wantMusic = false, musicTimer = 0, musicBus = null, wind = null, nextGust = 0, nextWhistle = 0;
+  // V4.1 (2) : plus doux, moins métallique (sifflements moins pointus, tout passe par un filtre qui coupe les aigus)
+  // et beaucoup plus varié : accalmies presque silencieuses, brises, rafales qui montent puis retombent, grondement
+  // grave qui vit à son propre rythme, sifflements à intervalles très irréguliers (parfois deux à la suite).
+  let wantMusic = false, musicTimer = 0, musicBus = null, wind = null, nextGust = 0, nextRumble = 0, nextWhistle = 0;
   const rand = (a, b) => a + Math.random() * (b - a);
+  const pick = (list) => { let r = Math.random() * list.reduce((t, x) => t + x[0], 0); for (const x of list) { r -= x[0]; if (r <= 0) return x[1]; } return list[0][1]; };
+  function whistle(t) {
+    const dur = rand(0.8, 3.2), f0 = rand(600, 1100), f1 = f0 * rand(1.1, 1.6);
+    const src = noiseSource();
+    const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = rand(7, 12);
+    bp.frequency.setValueAtTime(f0, t);
+    bp.frequency.linearRampToValueAtTime(f1, t + dur * rand(0.3, 0.7));
+    bp.frequency.linearRampToValueAtTime(f0 * rand(0.8, 1.05), t + dur);
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(rand(0.12, 0.25), t + dur * rand(0.3, 0.6));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const p = panner(rand(-0.8, 0.8));
+    src.connect(bp); bp.connect(g); g.connect(p); p.connect(wind.lp);
+    src.start(t, Math.random()); src.stop(t + dur + 0.1);
+  }
   function musicTick() {
     if (!ac || !musicBus || !wind) return;
     const now = ac.currentTime;
-    if (ac.state !== 'running') { nextGust = now + 0.1; nextWhistle = now + 2; return; }
-    // rafales : le souffle change de force et de timbre toutes les 1,5 à 4 s
+    if (ac.state !== 'running') { nextGust = now + 0.1; nextWhistle = now + 3; return; }
+    // le souffle : une « humeur » tirée au hasard à chaque fois, de durée très variable
     if (now >= nextGust) {
-      const dur = rand(1.5, 4), strong = Math.random() < 0.3;
-      wind.g.gain.setTargetAtTime(strong ? rand(0.22, 0.32) : rand(0.1, 0.2), now, dur / 3);
-      wind.bp.frequency.setTargetAtTime(strong ? rand(500, 800) : rand(250, 450), now, dur / 3);
-      wind.hiss.gain.setTargetAtTime(strong ? rand(0.03, 0.05) : rand(0.008, 0.02), now, dur / 3);
-      nextGust = now + dur;
+      const kind = pick([[3, 'calme'], [4, 'brise'], [3, 'rafale']]);
+      const g = wind.g.gain, f = wind.bp.frequency;
+      g.cancelScheduledValues(now); f.cancelScheduledValues(now);
+      if (kind === 'calme') {
+        const dur = rand(2, 7);
+        g.setTargetAtTime(rand(0.01, 0.035), now, rand(0.8, 2));
+        f.setTargetAtTime(rand(200, 320), now, 1.5);
+        nextGust = now + dur;
+      } else if (kind === 'brise') {
+        const dur = rand(1.5, 5);
+        g.setTargetAtTime(rand(0.04, 0.09), now, rand(0.5, 1.5));
+        f.setTargetAtTime(rand(260, 450), now, 1);
+        nextGust = now + dur;
+      } else {
+        // rafale : monte vite, tient un peu, puis retombe lentement
+        const up = rand(0.4, 1.5), hold = rand(0.3, 1.5), down = rand(1, 3);
+        g.setTargetAtTime(rand(0.1, 0.16), now, up / 3);
+        g.setTargetAtTime(rand(0.03, 0.07), now + up + hold, down / 3);
+        f.setTargetAtTime(rand(450, 700), now, up / 3);
+        f.setTargetAtTime(rand(250, 400), now + up + hold, down / 3);
+        nextGust = now + up + hold + down;
+      }
     }
-    // sifflements aigus, rares, qui montent puis redescendent
+    // grondement grave, sur un rythme indépendant
+    if (now >= nextRumble) {
+      wind.rumble.gain.setTargetAtTime(Math.random() < 0.35 ? 0.004 : rand(0.02, 0.06), now, rand(1, 3));
+      nextRumble = now + rand(3, 9);
+    }
+    // sifflements : parfois rien pendant longtemps, parfois deux à la suite
     if (now >= nextWhistle) {
-      const t = now + 0.05, dur = rand(1.2, 2.8), f0 = rand(900, 1500), f1 = f0 * rand(1.25, 1.8);
-      const src = noiseSource();
-      const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 30;
-      bp.frequency.setValueAtTime(f0, t);
-      bp.frequency.linearRampToValueAtTime(f1, t + dur * 0.55);
-      bp.frequency.linearRampToValueAtTime(f0 * rand(0.85, 1.05), t + dur);
-      const g = ac.createGain();
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(rand(0.5, 0.8), t + dur * 0.4);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      const p = panner(rand(-0.7, 0.7));
-      src.connect(bp); bp.connect(g); g.connect(p); p.connect(musicBus);
-      src.start(t, Math.random()); src.stop(t + dur + 0.1);
-      nextWhistle = now + rand(3, 8);
+      whistle(now + 0.05);
+      if (Math.random() < 0.25) whistle(now + rand(0.6, 1.5));
+      nextWhistle = now + pick([[2, rand(2, 5)], [3, rand(5, 10)], [2, rand(10, 18)]]);
     }
   }
   function startMusic() {
@@ -283,20 +313,21 @@ window.Sons = (() => {
     const now = ac.currentTime;
     musicBus = ac.createGain();
     musicBus.gain.setValueAtTime(0.0001, now);
-    musicBus.gain.exponentialRampToValueAtTime(1, now + 2);
-    musicBus.connect(master);
-    // souffle grave (bruit filtré) + léger chuintement plus aigu
+    musicBus.gain.exponentialRampToValueAtTime(0.8, now + 2.5);
+    // tout le vent passe par un filtre qui adoucit les aigus (moins métallique)
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1600; lp.Q.value = 0.5;
+    lp.connect(musicBus); musicBus.connect(master);
     const src = noiseSource();
-    const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 350; bp.Q.value = 0.9;
-    const g = ac.createGain(); g.gain.value = 0.1;
-    src.connect(bp); bp.connect(g); g.connect(musicBus);
+    const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 300; bp.Q.value = 0.7;
+    const g = ac.createGain(); g.gain.value = 0.03;
+    src.connect(bp); bp.connect(g); g.connect(lp);
     const src2 = noiseSource();
-    const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2500;
-    const hiss = ac.createGain(); hiss.gain.value = 0.015;
-    src2.connect(hp); hp.connect(hiss); hiss.connect(musicBus);
+    const lp2 = ac.createBiquadFilter(); lp2.type = 'lowpass'; lp2.frequency.value = 140;
+    const rumble = ac.createGain(); rumble.gain.value = 0.02;
+    src2.connect(lp2); lp2.connect(rumble); rumble.connect(lp);
     src.start(); src2.start();
-    wind = { src, src2, bp, g, hiss };
-    nextGust = now; nextWhistle = now + rand(1.5, 3);
+    wind = { src, src2, bp, g, rumble, lp };
+    nextGust = now; nextRumble = now + rand(1, 3); nextWhistle = now + rand(3, 7);
     musicTimer = setInterval(musicTick, 100);
     musicTick();
   }
