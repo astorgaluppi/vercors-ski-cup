@@ -59,7 +59,7 @@ window.PISTE_V1 = {
   bossesIsolees: [
     { y: 392, x: -0.30 },
     { y: 418, x: 0.35 },
-    { y: 446, x: -0.05 }
+    { y: 446, x: -0.6 }
   ],
 
   // V4 — Le biathlète (« Martin Fourcade ! »), vers 615 m (V4.1 : déplacé dans le long secteur sans obstacle, avant
