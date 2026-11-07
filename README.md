@@ -32,7 +32,7 @@ Nouveautés de la V3 :
 - **Champs de bosses en passages** : rangées serrées avec une seule ouverture qui change de côté à chaque rangée,
   impossible de passer tout droit.
 - **Page d'accueil** : logo du jeu, podium des 3 meilleurs temps de la famille (or, argent, bronze), ombre chinoise
-  du Vercors en fond, musique d'attente fabriquée par le jeu (au premier toucher, coupée au départ ou avec 🔊) et,
+  du Vercors en fond, fond sonore fabriqué par le jeu (au premier toucher, coupé au départ ou avec 🔊 ; vent dans la montagne depuis la V4.1) et,
   sur les grands écrans, une bande où le skieur remonte au tire-fesses.
 - Arrivée : traces figées, arrêt dans le bas de l'aire d'arrivée, bras levés une fois arrêté. Bruitages plus doux.
 
@@ -49,6 +49,7 @@ Nouveautés de la V4 : les derniers obstacles
   treillis sortent des sapins, un de chaque côté, et lancent des sacs de pièces d'or là où va le skieur. Une cible
   apparaît au sol 1 s avant la chute du sac ; être dedans à ce moment fait tomber. Le sac éclate en gerbe de pièces
   d'or qui restent sur la neige.
+- V4.1 : sur la page d'accueil, la musique est remplacée par le vent dans la montagne (rafales et sifflements aigus) ; skis renommés « Les Tante Rhéa », « Les Madame Bec » et « Les Neige d'en Haut » ; l'écran de chute indique la cause et les skis.
 - V4.1 : les banderoles d'annonce arrivent environ 1,5 s avant que l'obstacle entre dans l'écran.
 - Rappel V3.4 : 2e champ de bosses à 1 100 m ; Les Neige d'en Haut (ex-Père Fourcade) avec la faute de carre « Rebond », qui n'est plus annoncée sur l'écran de choix (V4.1).
 
@@ -59,7 +60,7 @@ Nouveautés de la V4 : les derniers obstacles
 - `js/game.js` : le jeu (physique, dessins, commandes) ; réglages en haut du fichier (`CFG`)
 - `js/sons.js` : les bruitages (Web Audio)
 - `js/famille.js` : prénom, code famille, classement et podium
-- `js/accueil.js` : page d'accueil (musique au premier toucher, bande du tire-fesses)
+- `js/accueil.js` : page d'accueil (son du vent au premier toucher, bande du tire-fesses)
 - `img/logo-titre.png` : le logo (fond rendu transparent)
 - `supabase/scores.sql` : script à lancer une fois dans Supabase (SQL Editor) pour créer la base des scores
 - `supabase/v3-skis.sql` : mise à jour V3 de la base (enregistre la paire de skis du record), sans rien effacer

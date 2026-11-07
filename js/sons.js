@@ -1,4 +1,4 @@
-// Pas Très Pentu Ski Cup — bruitages (V2, V4) et musique d'attente (V3)
+// Pas Très Pentu Ski Cup — bruitages (V2, V4) et vent de la page d'accueil (V4.1, remplace la musique de la V3)
 // Tous les sons sont fabriqués par le jeu avec Web Audio : aucun fichier à télécharger (0 Ko).
 // La glisse suit la vitesse et devient plus forte dans les virages et en chasse-neige ; cloches et foule sont jouées en fond.
 window.Sons = (() => {
@@ -242,45 +242,62 @@ window.Sons = (() => {
     }
   }
 
-  // ---------- V3 : musique d'attente de la page d'accueil ----------
-  // Petite boucle légère (arpège et basse douce sur 4 accords), fabriquée par le jeu.
-  // Elle démarre au premier toucher de l'écran et s'arrête au départ de la course.
-  let wantMusic = false, musicTimer = 0, musicBus = null, nextNote = 0, noteIdx = 0;
-  const BPM = 96, EIGHTH = 60 / BPM / 2;
-  const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
-  // Do - La mineur - Fa - Sol, 8 croches par accord
-  const CHORDS = [[60, 64, 67, 72], [57, 60, 64, 69], [53, 57, 60, 65], [55, 59, 62, 67]];
-  const PATTERN = [0, 1, 2, 3, 2, 1, 2, 1];
-  function musicNote(when, midi, dur, vol, type) {
-    const o = ac.createOscillator(); o.type = type; o.frequency.value = mtof(midi);
-    const g = ac.createGain();
-    g.gain.setValueAtTime(0.0001, when);
-    g.gain.exponentialRampToValueAtTime(vol, when + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
-    o.connect(g); g.connect(musicBus);
-    o.start(when); o.stop(when + dur + 0.05);
-  }
+  // ---------- Page d'accueil : V4.1, vent dans la montagne (remplace la musique d'attente de la V3) ----------
+  // Un souffle grave qui monte et retombe en rafales irrégulières, et de temps en temps un sifflement aigu
+  // qui glisse (le vent dans les crêtes). Il démarre au premier toucher de l'écran et s'arrête au départ de la course.
+  // (Les noms « music » sont gardés pour ne rien changer au reste du jeu.)
+  let wantMusic = false, musicTimer = 0, musicBus = null, wind = null, nextGust = 0, nextWhistle = 0;
+  const rand = (a, b) => a + Math.random() * (b - a);
   function musicTick() {
-    if (!ac || !musicBus) return;
-    if (ac.state !== 'running') { nextNote = ac.currentTime + 0.1; return; }
-    while (nextNote < ac.currentTime + 0.25) {
-      const bar = Math.floor(noteIdx / 8) % CHORDS.length, step = noteIdx % 8, ch = CHORDS[bar];
-      musicNote(nextNote, ch[PATTERN[step]] + 12, EIGHTH * 1.8, 0.05, 'triangle');
-      if (step === 0) musicNote(nextNote, ch[0] - 12, EIGHTH * 7.5, 0.07, 'sine');
-      if (step === 4) musicNote(nextNote, ch[0] - 5, EIGHTH * 3.5, 0.04, 'sine');
-      if (step === 6 && bar === 3) musicNote(nextNote, ch[3] + 12, EIGHTH * 2, 0.03, 'sine'); // petit clin d'œil
-      nextNote += EIGHTH; noteIdx++;
+    if (!ac || !musicBus || !wind) return;
+    const now = ac.currentTime;
+    if (ac.state !== 'running') { nextGust = now + 0.1; nextWhistle = now + 2; return; }
+    // rafales : le souffle change de force et de timbre toutes les 1,5 à 4 s
+    if (now >= nextGust) {
+      const dur = rand(1.5, 4), strong = Math.random() < 0.3;
+      wind.g.gain.setTargetAtTime(strong ? rand(0.22, 0.32) : rand(0.1, 0.2), now, dur / 3);
+      wind.bp.frequency.setTargetAtTime(strong ? rand(500, 800) : rand(250, 450), now, dur / 3);
+      wind.hiss.gain.setTargetAtTime(strong ? rand(0.03, 0.05) : rand(0.008, 0.02), now, dur / 3);
+      nextGust = now + dur;
+    }
+    // sifflements aigus, rares, qui montent puis redescendent
+    if (now >= nextWhistle) {
+      const t = now + 0.05, dur = rand(1.2, 2.8), f0 = rand(900, 1500), f1 = f0 * rand(1.25, 1.8);
+      const src = noiseSource();
+      const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 30;
+      bp.frequency.setValueAtTime(f0, t);
+      bp.frequency.linearRampToValueAtTime(f1, t + dur * 0.55);
+      bp.frequency.linearRampToValueAtTime(f0 * rand(0.85, 1.05), t + dur);
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(rand(0.5, 0.8), t + dur * 0.4);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      const p = panner(rand(-0.7, 0.7));
+      src.connect(bp); bp.connect(g); g.connect(p); p.connect(musicBus);
+      src.start(t, Math.random()); src.stop(t + dur + 0.1);
+      nextWhistle = now + rand(3, 8);
     }
   }
   function startMusic() {
     if (!ac || musicTimer) return;
+    const now = ac.currentTime;
     musicBus = ac.createGain();
-    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200;
-    musicBus.gain.setValueAtTime(0.0001, ac.currentTime);
-    musicBus.gain.exponentialRampToValueAtTime(1, ac.currentTime + 1.2);
-    musicBus.connect(lp); lp.connect(master);
-    nextNote = ac.currentTime + 0.1; noteIdx = 0;
-    musicTimer = setInterval(musicTick, 50);
+    musicBus.gain.setValueAtTime(0.0001, now);
+    musicBus.gain.exponentialRampToValueAtTime(1, now + 2);
+    musicBus.connect(master);
+    // souffle grave (bruit filtré) + léger chuintement plus aigu
+    const src = noiseSource();
+    const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 350; bp.Q.value = 0.9;
+    const g = ac.createGain(); g.gain.value = 0.1;
+    src.connect(bp); bp.connect(g); g.connect(musicBus);
+    const src2 = noiseSource();
+    const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2500;
+    const hiss = ac.createGain(); hiss.gain.value = 0.015;
+    src2.connect(hp); hp.connect(hiss); hiss.connect(musicBus);
+    src.start(); src2.start();
+    wind = { src, src2, bp, g, hiss };
+    nextGust = now; nextWhistle = now + rand(1.5, 3);
+    musicTimer = setInterval(musicTick, 100);
     musicTick();
   }
   function stopMusic() {
@@ -289,9 +306,13 @@ window.Sons = (() => {
       const bus = musicBus;
       bus.gain.cancelScheduledValues(ac.currentTime);
       bus.gain.setTargetAtTime(0, ac.currentTime, 0.15);
-      setTimeout(() => { try { bus.disconnect(); } catch (e) { /* déjà débranché */ } }, 1500);
+      const w = wind;
+      setTimeout(() => {
+        try { bus.disconnect(); } catch (e) { /* déjà débranché */ }
+        if (w) { try { w.src.stop(); w.src2.stop(); } catch (e) { /* déjà arrêté */ } }
+      }, 1500);
     }
-    musicBus = null;
+    musicBus = null; wind = null;
   }
   function music(on) {
     wantMusic = !!on;
