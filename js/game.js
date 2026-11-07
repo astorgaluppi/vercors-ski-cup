@@ -50,7 +50,7 @@
       look: { ski: '#b5793a', skiTip: '#7a4a1e' } },
     { id: 'bec', nom: 'Les Madame Bec', devise: 'hors de prix mais plutôt polyvalents', max: 90, min: 10, grip: 1,
       look: { ski: '#e53935', skiTip: '#ffca28' } },
-    { id: 'fourcade', nom: "Les Neige d'en Haut", devise: 'le haut de gamme, pour ceux qui en sont capables', max: 100, min: 15, grip: 0.8,
+    { id: 'fourcade', nom: "Les Neige d'en Haut", devise: "le haut de gamme, pour ceux qu'ils en sont capables", max: 100, min: 15, grip: 0.8,
       // faute de carre : au-dessus de 40 km/h, relâcher puis redonner la même direction en moins de 0,5 s fait tomber
       carre: { vitesse: 40, delai: 0.5 },
       look: { ski: '#15171c', skiTip: '#00e5ff' } }
