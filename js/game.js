@@ -286,7 +286,7 @@
     if (!L) return null;
     const freres = L.freres.map((f, i) => {
       const c = TRACK.center(f.y), hw = TRACK.halfW(f.y);
-      return { y: f.y, cote: f.cote, xIn: c + f.cote * (hw + 0.7), xOut: c + f.cote * (hw + 4), i };
+      return { y: f.y, cote: f.cote, xIn: c + f.cote * (hw + 0.4), xOut: c + f.cote * (hw + 4), i };
     });
     return { L, freres };
   })();
@@ -1358,7 +1358,7 @@
         if (f.y < yTop - 6 || f.y > yBot + 6) continue;
         const x = f.xOut + (f.xIn - f.xOut) * prog;
         const throwing = f.throwT !== undefined && S.lhu.t >= 0 && S.lhu.t - f.throwT < 0.3;
-        items.push({ y: f.y, draw: () => drawBrother(wx(x), wy(f.y), 50, f.cote, throwing) });
+        items.push({ y: f.y + 3, draw: () => drawBrother(wx(x), wy(f.y), 50, f.cote, throwing) });
       }
     }
     items.push({ y: S.y, draw: drawPlayer });
