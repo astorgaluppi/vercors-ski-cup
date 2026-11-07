@@ -806,6 +806,11 @@
     S.banner = { text, t0: now, style };
   }
 
+  const FALL_CAUSES = {
+    arbre: 'Dans les sapins', bosse: 'Sur une bosse', engin: 'Contre un chasse-neige', ecole: "Dans l'école de ski",
+    terre: 'Sur une plaque de terre', carre: 'Faute de carre', biathlete: 'Contre le biathlète', lhuillier: "Sous un sac de pièces d'or"
+  };
+
   function fall(reason) {
     if (S.mode !== 'race') return;
     S.mode = 'fallen';
@@ -865,7 +870,13 @@
       S.v = Math.max(0, S.v - 18 * dt);
       S.y += S.v * Math.cos(S.th) * dt;
       S.x += S.v * Math.sin(S.th) * dt;
-      if (S.fallT > 1.4 && !S.endShown) { S.endShown = true; showScreen('fall'); }
+      if (S.fallT > 1.4 && !S.endShown) {
+        S.endShown = true;
+        // V4.1 : cause de la chute et paire de skis utilisée
+        const el = document.getElementById('fall-info');
+        if (el) el.textContent = `${FALL_CAUSES[S.fallReason] || 'Chute'} · skis ${ski.nom}`;
+        showScreen('fall');
+      }
     }
 
     // particules
@@ -1017,7 +1028,7 @@
     const dth = Math.sign(d) * Math.min(Math.abs(d), omega * dt);
     S.th += dth;
     // Père Fourcade : relâcher puis redonner la même direction trop vite = faute de carre
-    if (ski.carre) {
+    if (ski.carre && ski.id === 'fourcade') {
       const C = ski.carre;
       const dir = Math.abs(input.steer) > 0.35 ? Math.sign(input.steer) : (Math.abs(input.steer) < 0.15 ? 0 : S.edgeDir);
       if (dir === 0 && S.edgeDir !== 0) { S.edgeLast = S.edgeDir; S.edgeT = 0; }
