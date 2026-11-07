@@ -7,7 +7,7 @@ Petit jeu de ski en famille, jouable dans le navigateur d'un téléphone (portra
 - Ordinateur : flèches du clavier (Entrée ou Espace pour « Jouer » / « Rejouer »).
 
 ## Contenu
-Piste de 1 500 m avec sapins du bord et deux champs de bosses (200 m et 1 100 m), compte à rebours,
+Piste de 1 500 m avec sapins du bord et deux champs de bosses (200 m et 1 180 m depuis la V4.1), compte à rebours,
 chrono au dixième, vitesse en km/h, temps intermédiaires à 500 m et 1 000 m, arrivée avec aire d'arrêt,
 « Chute ! » et « Hors délai » (2 min).
 
@@ -20,7 +20,7 @@ Nouveautés de la V2 :
   plus forte dans les virages et en chasse-neige, bips du compte à rebours, bip de recul des chasse-neige,
   ovation à l'arrivée (applaudissements, brouhaha et cloches de vache), chute avec le « Oh ! » de la foule. Bouton 🔊 pour couper le son.
 - **Obstacles** : deux chasse-neige garés en chicane très large au départ (échauffement), et
-  « La soupe et les cailloux ! » sur les 200 derniers mètres : neige lourde un peu jaune (virages plus larges,
+  « La soupe et les cailloux ! » sur les 120 derniers mètres depuis la V4.1 (9 plaques) : neige lourde un peu jaune (virages plus larges,
   vitesse un peu plus basse) et plaques de terre à contourner.
 
 Nouveautés de la V3 :

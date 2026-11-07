@@ -252,7 +252,7 @@ window.Sons = (() => {
   let wantMusic = false, musicTimer = 0, musicBus = null, wind = null, nextGust = 0, nextRumble = 0, nextWhistle = 0;
   const rand = (a, b) => a + Math.random() * (b - a);
   const pick = (list) => { let r = Math.random() * list.reduce((t, x) => t + x[0], 0); for (const x of list) { r -= x[0]; if (r <= 0) return x[1]; } return list[0][1]; };
-  function whistle(t) {
+  function windWhistle(t) {
     const dur = rand(0.8, 3.2), f0 = rand(600, 1100), f1 = f0 * rand(1.1, 1.6);
     const src = noiseSource();
     const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = rand(7, 12);
@@ -303,8 +303,8 @@ window.Sons = (() => {
     }
     // sifflements : parfois rien pendant longtemps, parfois deux à la suite
     if (now >= nextWhistle) {
-      whistle(now + 0.05);
-      if (Math.random() < 0.25) whistle(now + rand(0.6, 1.5));
+      windWhistle(now + 0.05);
+      if (Math.random() < 0.25) windWhistle(now + rand(0.6, 1.5));
       nextWhistle = now + pick([[2, rand(2, 5)], [3, rand(5, 10)], [2, rand(10, 18)]]);
     }
   }

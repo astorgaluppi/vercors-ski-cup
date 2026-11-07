@@ -16,8 +16,8 @@ window.PISTE_V1 = {
     { longueur: 100, angle: 30 },
     { longueur: 80,  angle: 0 },
     { longueur: 80,  angle: -30 },
-    { longueur: 190, angle: 0 },     // intermédiaire 2 (1000 m) + Frères Lhuillier (1000 m) + 2e champ de bosses (1100 m)
-    { longueur: 80,  angle: 20 },
+    { longueur: 190, angle: 0 },     // intermédiaire 2 (1000 m) + Frères Lhuillier (1000 m)
+    { longueur: 80,  angle: 20 },     // 2e champ de bosses (1 180 m, V4.1)
     { longueur: 90,  angle: 0 },
     { longueur: 80,  angle: -20 },
     { longueur: 200, angle: 0 }      // ligne droite d'arrivée + aire d'arrêt
@@ -27,7 +27,7 @@ window.PISTE_V1 = {
     // minimale entre deux bosses (m). couloirs : la piste est découpée en bandes verticales qui reçoivent chacune
     // au moins une bosse, pour qu'on ne puisse pas traverser un champ tout droit.
     { debut: 200,  longueur: 50,  nombre: 20, ecartMin: 4.5, couloirs: 14 },  // premier champ, plus facile
-    { debut: 1100, longueur: 50,  nombre: 50, ecartMin: 3.0, couloirs: 14 }   // deuxième champ, plus difficile
+    { debut: 1180, longueur: 50,  nombre: 50, ecartMin: 3.0, couloirs: 14 }   // deuxième champ, plus difficile (V4.1 : 1 180 m)
   ],
 
   // V2 — deux chasse-neige garés de biais, de chaque côté, en chicane très large (échauffement).
@@ -78,17 +78,19 @@ window.PISTE_V1 = {
     freres: [{ y: 1008, cote: -1 }, { y: 1036, cote: 1 }]
   },
 
-  // V2 — « La soupe et les cailloux ! » : neige lourde (plus jaune) sur les 200 derniers mètres,
-  // avec des plaques de terre à contourner. x : position en travers (-1 = bord gauche, 1 = bord droit),
-  // r : taille de la plaque (m).
-  neigeLourde: { debut: 1300, fin: 1500 },
+  // V2 — « La soupe et les cailloux ! » : neige lourde (plus jaune) en bas de la piste, avec des plaques de terre
+  // à contourner. V4.1 : la zone commence plus bas (1 380 m au lieu de 1 300 m), avec 9 plaques au lieu de 7.
+  // x : position en travers (-1 = bord gauche, 1 = bord droit), r : taille de la plaque (m).
+  neigeLourde: { debut: 1380, fin: 1500 },
   plaquesDeTerre: [
-    { y: 1322, x: -0.55, r: 2.2 },
-    { y: 1346, x: 0.10,  r: 2.6 },
-    { y: 1370, x: -0.50, r: 2.3 },
-    { y: 1394, x: 0.45,  r: 2.2 },
-    { y: 1420, x: -0.20, r: 2.5 },
-    { y: 1446, x: 0.50,  r: 2.2 },
-    { y: 1468, x: -0.45, r: 2.0 }
+    { y: 1396, x: -0.50, r: 2.2 },
+    { y: 1408, x: 0.35,  r: 2.3 },
+    { y: 1420, x: -0.10, r: 2.4 },
+    { y: 1431, x: 0.60,  r: 2.0 },
+    { y: 1442, x: -0.55, r: 2.2 },
+    { y: 1454, x: 0.15,  r: 2.5 },
+    { y: 1466, x: -0.35, r: 2.1 },
+    { y: 1477, x: 0.50,  r: 2.2 },
+    { y: 1488, x: -0.15, r: 2.0 }
   ]
 };
