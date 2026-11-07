@@ -137,7 +137,7 @@ window.Famille = (() => {
     const x = new Date(d);
     return isNaN(x) ? '' : x.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
-  const SKI_NOMS = { rhea: 'Tante Rhéa', bec: 'Madame Bec', fourcade: 'Père Fourcade' };
+  const SKI_NOMS = { rhea: 'Les Tante Rhéa', bec: 'Les Madame Bec', fourcade: "Les Neige d'en Haut" };
   const skiTxt = (b) => (b.ski && SKI_NOMS[b.ski] ? ` · ${SKI_NOMS[b.ski]}` : '');
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 

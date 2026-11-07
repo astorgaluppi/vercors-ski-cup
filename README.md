@@ -24,8 +24,8 @@ Nouveautés de la V2 :
   vitesse un peu plus basse) et plaques de terre à contourner.
 
 Nouveautés de la V3 :
-- **Choix des skis** juste avant la course : « Tante Rhéa » (75 km/h, chasse-neige jusqu'à 5 km/h, virages +30 %),
-  « Madame Bec » (réglages de la V2, présélectionnée) et « Père Fourcade » (100 km/h, 15 km/h, virages −20 %).
+- **Choix des skis** juste avant la course : « Les Tante Rhéa » (75 km/h, chasse-neige jusqu'à 5 km/h, virages +30 %),
+  « Les Madame Bec » (réglages de la V2, présélectionnée) et « Les Neige d'en Haut » (100 km/h, 15 km/h, virages −20 %).
   « Rejouer » repart avec la même paire ; la paire du record s'affiche dans le classement.
 - **École de ski** (« Le moniteur de ski ! », vers 815 m) : un moniteur en rouge suivi de 6 enfants descend en
   zigzag d'un bord à l'autre à 8 km/h ; toucher l’un des 7 skieurs (zone de contact un peu plus large que le dessin) fait tomber.
@@ -50,7 +50,7 @@ Nouveautés de la V4 : les derniers obstacles
   apparaît au sol 1 s avant la chute du sac ; être dedans à ce moment fait tomber. Le sac éclate en gerbe de pièces
   d'or qui restent sur la neige.
 - V4.1 : les banderoles d'annonce arrivent environ 1,5 s avant que l'obstacle entre dans l'écran.
-- Rappel V3.4 : 2e champ de bosses à 1 100 m ; Père Fourcade avec la faute de carre « Rebond ».
+- Rappel V3.4 : 2e champ de bosses à 1 100 m ; Les Neige d'en Haut (ex-Père Fourcade) avec la faute de carre « Rebond », qui n'est plus annoncée sur l'écran de choix (V4.1).
 
 ## Fichiers
 - `index.html` : la page et les écrans

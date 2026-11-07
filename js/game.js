@@ -46,11 +46,11 @@
 
   // V3 : les trois paires de skis (vitesse max en schuss, vitesse min en chasse-neige, adhérence dans les virages)
   const SKIS = [
-    { id: 'rhea', nom: 'Tante Rhéa', devise: 'rustiques mais efficaces', max: 75, min: 5, grip: 1.3,
+    { id: 'rhea', nom: 'Les Tante Rhéa', devise: 'rustiques mais efficaces', max: 75, min: 5, grip: 1.3,
       look: { ski: '#b5793a', skiTip: '#7a4a1e' } },
-    { id: 'bec', nom: 'Madame Bec', devise: 'hors de prix mais plutôt polyvalents', max: 90, min: 10, grip: 1,
+    { id: 'bec', nom: 'Les Madame Bec', devise: 'hors de prix mais plutôt polyvalents', max: 90, min: 10, grip: 1,
       look: { ski: '#e53935', skiTip: '#ffca28' } },
-    { id: 'fourcade', nom: 'Père Fourcade', devise: 'le haut de gamme mais ils se méritent…', max: 100, min: 15, grip: 0.8,
+    { id: 'fourcade', nom: "Les Neige d'en Haut", devise: 'le haut de gamme, pour ceux qui en sont capables', max: 100, min: 15, grip: 0.8,
       // faute de carre : au-dessus de 40 km/h, relâcher puis redonner la même direction en moins de 0,5 s fait tomber
       carre: { vitesse: 40, delai: 0.5 },
       look: { ski: '#15171c', skiTip: '#00e5ff' } }
@@ -874,7 +874,7 @@
         S.endShown = true;
         // V4.1 : cause de la chute et paire de skis utilisée
         const el = document.getElementById('fall-info');
-        if (el) el.textContent = `${FALL_CAUSES[S.fallReason] || 'Chute'} · skis ${ski.nom}`;
+        if (el) el.textContent = `${FALL_CAUSES[S.fallReason] || 'Chute'} · ${ski.nom}`;
         showScreen('fall');
       }
     }
@@ -1027,7 +1027,7 @@
     const d = target - S.th;
     const dth = Math.sign(d) * Math.min(Math.abs(d), omega * dt);
     S.th += dth;
-    // Père Fourcade : relâcher puis redonner la même direction trop vite = faute de carre
+    // Les Neige d'en Haut (id « fourcade ») : relâcher puis redonner la même direction trop vite = faute de carre
     if (ski.carre && ski.id === 'fourcade') {
       const C = ski.carre;
       const dir = Math.abs(input.steer) > 0.35 ? Math.sign(input.steer) : (Math.abs(input.steer) < 0.15 ? 0 : S.edgeDir);
@@ -2173,7 +2173,7 @@
       row('Vitesse', (ski.max - 60) / 45, `${ski.max} km/h en schuss`) +
       row('Freinage', (20 - ski.min) / 17, `chasse-neige jusqu'à ${ski.min} km/h`) +
       row('Virages', (ski.grip - 0.6) / 0.8, grip ? `adhérence ${grip > 0 ? '+' : '−'}${Math.abs(grip)} %` : 'adhérence de référence') +
-      (ski.carre ? `<span class="ski-model carre-text">⚠ Au-dessus de ${ski.carre.vitesse} km/h, relâcher puis redonner la même direction trop vite : faute de carre !</span>` : '');
+      ''; // V4.1 : la faute de carre n'est plus annoncée, c'est au joueur de la découvrir
   }
 
   function openSkis() {
