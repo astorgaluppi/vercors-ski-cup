@@ -1534,7 +1534,7 @@
         items.push({ y: t.y, draw: () => { ctx.globalAlpha = a; drawTreeSprite(t); ctx.globalAlpha = 1; } });
       } else items.push({ y: t.y, draw: () => drawTreeSprite(t) });
     }
-    if (SECRET && SECRET.Q.panneau > yTop - 3 && SECRET.Q.panneau < yBot + 3) items.push({ y: SECRET.Q.panneau + 4, draw: drawSignpost }); // dessiné devant les sapins voisins
+    if (SECRET && SECRET.Q.panneau > yTop - 3 && SECRET.Q.panneau < yBot + 3) items.push({ y: SECRET.Q.panneau, draw: drawSignpost }); // à moitié caché par les sapins voisins
     if (yTop < 2 && yBot > -12) {
       items.push({ y: 0.01, draw: () => drawArch(0, 'DÉPART', '#e53935') });
       items.push({ y: CFG.gateY, draw: drawGate });
@@ -2122,7 +2122,7 @@
 
   // V5 : vieux panneau de direction en bois, à moitié enfoui sous la neige, au bord gauche de la piste
   function drawSignpost() {
-    const y = SECRET.Q.panneau, x = TRACK.center(y) - TRACK.halfW(y) + 1.8;
+    const y = SECRET.Q.panneau, x = TRACK.center(y) - TRACK.halfW(y) + 0.3; // V5 : enfoui dans les sapins du bord
     const sx = wx(x), sy = wy(y), s = SCALE * 1.4;
     ctx.save();
     ctx.translate(sx, sy);
