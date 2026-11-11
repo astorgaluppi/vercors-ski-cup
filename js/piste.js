@@ -86,9 +86,11 @@ window.PISTE_V1 = {
   // Lhuillier). Juste avant de rejoindre la piste, un petit ressaut naturel (« ressaut ») fait sauter le skieur.
   // troncons : même principe que la piste (angle positif = vers la droite), en partant du bord gauche à « entree ».
   passageSecret: {
-    panneau: 664, entree: 672, finEntree: 694, largeur: 7, recouvrement: 2.6, ressaut: 969,
+    // (V5 : zone d'entrée allongée, de 660 à 698 m, et panneau placé dedans, à 668 m)
+    panneau: 668, entree: 660, finEntree: 698, largeur: 7, recouvrement: 2.6, ressaut: 969,
+    repereProvisoire: true, // VERSION DE TEST SEULEMENT : marque la zone d'entrée sur la neige (à retirer avant publication)
     troncons: [
-      { longueur: 24, angle: 0 },     // entrée, le long de la piste
+      { longueur: 36, angle: 0 },     // entrée, le long de la piste
       { longueur: 24, angle: -32 },
       { longueur: 26, angle: 32 },
       { longueur: 26, angle: -32 },

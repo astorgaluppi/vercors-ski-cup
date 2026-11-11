@@ -1424,6 +1424,18 @@
       ctx.globalAlpha = 1;
     }
 
+    // V5, version de test seulement : la zone d'entrée du passage secret est marquée en orange sur la neige
+    if (SECRET && SECRET.Q.repereProvisoire && rev === 0 && yBot > SECRET.Q.entree && yTop < SECRET.Q.finEntree) {
+      const Q = SECRET.Q;
+      ctx.fillStyle = 'rgba(255,140,0,0.35)';
+      ctx.beginPath();
+      for (let y = Q.entree; y <= Q.finEntree; y += 1) ctx.lineTo(wx(TRACK.center(y) - TRACK.halfW(y)), wy(y));
+      for (let y = Q.finEntree; y >= Q.entree; y -= 1) ctx.lineTo(wx(TRACK.center(y) - TRACK.halfW(y) + 2.5), wy(y));
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#e65100'; ctx.font = `900 14px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      for (let y = Q.entree + 6; y < Q.finEntree; y += 12) ctx.fillText('← ENTRÉE', wx(TRACK.center(y) - TRACK.halfW(y) + 2.7), wy(y));
+    }
+
     // neige lourde, un peu plus jaune (neige sale)
     if (HEAVY && yBot > HEAVY.debut - 10 && yTop < HEAVY.fin) {
       const y0 = Math.max(yTop, HEAVY.debut - 8), y1 = Math.min(yEnd, HEAVY.fin);
@@ -1503,7 +1515,7 @@
         items.push({ y: t.y, draw: () => { ctx.globalAlpha = a; drawTreeSprite(t); ctx.globalAlpha = 1; } });
       } else items.push({ y: t.y, draw: () => drawTreeSprite(t) });
     }
-    if (SECRET && SECRET.Q.panneau > yTop - 3 && SECRET.Q.panneau < yBot + 3) items.push({ y: SECRET.Q.panneau, draw: drawSignpost });
+    if (SECRET && SECRET.Q.panneau > yTop - 3 && SECRET.Q.panneau < yBot + 3) items.push({ y: SECRET.Q.panneau + 4, draw: drawSignpost }); // dessiné devant les sapins voisins
     if (yTop < 2 && yBot > -12) {
       items.push({ y: 0.01, draw: () => drawArch(0, 'DÉPART', '#e53935') });
       items.push({ y: CFG.gateY, draw: drawGate });
@@ -2091,18 +2103,18 @@
 
   // V5 : vieux panneau de direction en bois, à moitié enfoui sous la neige, au bord gauche de la piste
   function drawSignpost() {
-    const y = SECRET.Q.panneau, x = TRACK.center(y) - TRACK.halfW(y) + 1.2;
+    const y = SECRET.Q.panneau, x = TRACK.center(y) - TRACK.halfW(y) + 1.8;
     const sx = wx(x), sy = wy(y), s = SCALE * 1.4;
     ctx.save();
     ctx.translate(sx, sy);
     ctx.rotate(-0.16); // un peu penché
     // poteau
     ctx.fillStyle = '#6d4c2f';
-    ctx.fillRect(-0.09 * s, -1.25 * s, 0.18 * s, 1.25 * s);
+    ctx.fillRect(-0.09 * s, -1.55 * s, 0.18 * s, 1.55 * s);
     // planche en forme de flèche qui pointe vers la forêt, en bas à gauche
     ctx.save();
-    ctx.translate(0, -1.05 * s);
-    ctx.rotate(0.35);
+    ctx.translate(0, -1.35 * s);
+    ctx.rotate(-0.62); // la flèche pointe en diagonale vers le bas et la gauche, vers l'ouverture du passage
     ctx.fillStyle = '#9a6b3f'; ctx.strokeStyle = '#5b3d22'; ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(0.35 * s, -0.2 * s); ctx.lineTo(-0.55 * s, -0.2 * s); ctx.lineTo(-0.8 * s, 0); ctx.lineTo(-0.55 * s, 0.2 * s); ctx.lineTo(0.35 * s, 0.2 * s);
