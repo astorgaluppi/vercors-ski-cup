@@ -39,7 +39,12 @@
     heavyGripMul: 0.65,        // adhérence réduite : virages plus larges
     heavySpeedMul: 0.85,       // vitesses maximales réduites de 15 %
     heavyDec: 6 * KMH,         // freinage naturel jusqu'à la nouvelle vitesse maximale
-    mudHitMul: 0.82            // zone de chute un peu plus petite que la plaque dessinée
+    mudHitMul: 0.82,           // zone de chute un peu plus petite que la plaque dessinée
+    // V5 : passage secret
+    revealTime: 0.6,           // durée d'apparition du couloir (s)
+    jumpTime: 0.75,            // durée du saut sur le ressaut (s)
+    jumpLift: 26,              // hauteur du saut à l'écran (px pour un skieur de 52 px)
+    yeehaaTime: 1.5            // durée de la bulle « Yeehaa ! » (s)
   };
 
   const P = window.PISTE_V1;
@@ -111,6 +116,65 @@
     };
   })();
 
+  // ---------- V5 : passage secret ----------
+  // Couloir étroit qui part du bord gauche de la piste (entre « entree » et « finEntree ») et descend en zigzag
+  // dans la forêt jusqu'à la piste principale. Même construction que la piste, avec un lissage plus court
+  // (virages plus serrés, pour les bons skieurs).
+  const SECRET = (() => {
+    const Q = P.passageSecret;
+    if (!Q) return null;
+    const step = 0.5, y0 = Q.entree;
+    const total = Q.troncons.reduce((a, t) => a + t.longueur, 0);
+    const n = Math.ceil(total / step) + 1;
+    const raw = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const y = i * step;
+      let acc = 0, ang = Q.troncons[Q.troncons.length - 1].angle;
+      for (const t of Q.troncons) {
+        if (y >= acc && y < acc + t.longueur) { ang = t.angle; break; }
+        acc += t.longueur;
+      }
+      raw[i] = ang * DEG;
+    }
+    const smooth = (src, win) => {
+      const out = new Float32Array(n), h = Math.round(win / step / 2);
+      let sum = 0;
+      const get = (k) => src[Math.min(n - 1, Math.max(0, k))];
+      for (let k = -h; k <= h; k++) sum += get(k);
+      for (let i = 0; i < n; i++) {
+        out[i] = sum / (2 * h + 1);
+        sum += get(i + h + 1) - get(i - h);
+      }
+      return out;
+    };
+    const ang = smooth(smooth(raw, 8), 8);
+    const half = Q.largeur / 2;
+    const cx = new Float32Array(n);
+    // au départ, le couloir empiète un peu sur la piste (c'est là qu'on entre dans les sapins)
+    cx[0] = TRACK.center(y0) - TRACK.halfW(y0) - half + Q.recouvrement;
+    for (let i = 1; i < n; i++) cx[i] = cx[i - 1] + Math.tan((ang[i] + ang[i - 1]) / 2) * step;
+    // le couloir s'arrête dès qu'il est entièrement sur la piste principale (la sortie)
+    let y1 = y0 + total;
+    for (let i = Math.round(60 / step); i < n; i++) {
+      const y = y0 + i * step;
+      if (cx[i] - half / Math.cos(ang[i]) > TRACK.center(y) - TRACK.halfW(y) + 0.5) { y1 = y; break; }
+    }
+    const idx = (y) => {
+      const f = (y - y0) / step;
+      const i = Math.max(0, Math.min(n - 2, Math.floor(f)));
+      return [i, Math.max(0, Math.min(1, f - i))];
+    };
+    return {
+      Q, y0, y1,
+      center(y) { const [i, t] = idx(y); return cx[i] + (cx[i + 1] - cx[i]) * t; },
+      angle(y) { const [i, t] = idx(y); return ang[i] + (ang[i + 1] - ang[i]) * t; },
+      halfW(y) { return half / Math.cos(this.angle(y)); },
+      // vrai si (x, y) est dans le couloir, à « pad » mètres près (pad négatif : plus à l'intérieur)
+      inside(x, y, pad) { return y >= y0 && y <= y1 && Math.abs(x - this.center(y)) < this.halfW(y) + (pad || 0); }
+    };
+  })();
+  const inMain = (x, y, pad) => Math.abs(x - TRACK.center(y)) < TRACK.halfW(y) + (pad || 0);
+
   const STOP = { x: TRACK.center(FINISH + CFG.stopOffset), y: FINISH + CFG.stopOffset, r: CFG.stopRadius };
   const inStopZone = (x, y, extra) => Math.hypot(x - STOP.x, y - STOP.y) < STOP.r + extra;
 
@@ -138,6 +202,44 @@
           const yy = y + hash(k * 2.3) * 3.4;
           if (yy > FINISH - 10 && inStopZone(x, yy, 9)) continue;
           trees.push({ x, y: yy, s: 0.8 + hash(k * 5.3) * 0.45, v: k % 3 });
+        }
+      }
+    }
+    // V5 : les sapins qui se trouvent sur le passage secret le cachent ; ils s'effacent quand on le découvre
+    if (SECRET) {
+      for (const t of trees) if (SECRET.inside(t.x, t.y, 0.9)) t.mask = true;
+      const Q = SECRET.Q;
+      // sapins en plus sur le couloir, là où on le voit depuis la piste (entrée et sortie), pour bien le cacher
+      for (let y = SECRET.y0 + 1; y < SECRET.y1; y += 2.8) {
+        if (y > Q.finEntree + 30 && y < SECRET.y1 - 30) continue;
+        for (let j = 0; j < 3; j++) {
+          k++;
+          const x = SECRET.center(y) + (hash(k) - 0.5) * 2 * SECRET.halfW(y);
+          if (inMain(x, y, 0.6)) continue;
+          trees.push({ x, y: y + hash(k * 2.1) * 2.8, s: 0.85 + hash(k * 4.7) * 0.3, v: k % 3, mask: true });
+        }
+      }
+      // bords du couloir : une rangée serrée de sapins de chaque côté, qui apparaît avec le couloir
+      for (let y = SECRET.y0 + 1; y < SECRET.y1 + 2; y += 2.4) {
+        for (const side of [-1, 1]) {
+          k++;
+          const x = SECRET.center(y) + side * (SECRET.halfW(y) + 1.2 + hash(k) * 0.4);
+          if (inMain(x, y, 1.6)) continue;
+          trees.push({ x, y: y + (hash(k + 0.5) - 0.5) * 0.6, s: 0.9 + hash(k * 3.1) * 0.2, v: k % 3, reveal: true });
+        }
+      }
+      // forêt autour du couloir (toujours là), sans empiéter ni sur le couloir ni sur la piste
+      for (let y = SECRET.y0 - 6; y < SECRET.y1 + 6; y += 3.2) {
+        for (const side of [-1, 1]) {
+          for (let j = 0; j < 4; j++) {
+            k++;
+            if (hash(k * 1.7) < 0.2) continue;
+            const yy = y + hash(k * 2.3) * 3.2;
+            const yc = Math.max(SECRET.y0, Math.min(SECRET.y1, yy));
+            const x = SECRET.center(yc) + side * (SECRET.halfW(yc) + 3.4 + hash(k) * 20);
+            if (inMain(x, yy, 3) || SECRET.inside(x, yy, 2.2)) continue;
+            trees.push({ x, y: yy, s: 0.8 + hash(k * 5.3) * 0.45, v: k % 3 });
+          }
         }
       }
     }
@@ -453,7 +555,9 @@
     let aL = th, aR = th;
     if (pose.plow) { aL = th - 22 * DEG; aR = th + 22 * DEG; }
     if (pose.skid) { const s = pose.skidSide || 1; aL = aR = Math.max(-90 * DEG, Math.min(90 * DEG, th)) || s * 82 * DEG; }
-    const spread = pose.plow ? 7 : 5;
+    // V5 : saut, skis grands écartés
+    if (pose.jump) { aL = aR = th; }
+    const spread = pose.jump ? 14 : pose.plow ? 7 : 5;
     const lean = Math.sin(th) * 5 * u * (pose.skid ? -0.6 : 1);
     ski(-spread * u, aL);
     ski(spread * u, aR);
@@ -774,7 +878,8 @@
     endTimer: 0, fallT: 0, skidSide: 1, lift: 0,
     banner: null, bannerSeen: {}, splitMsg: null,
     particles: [], trail: [], lastTrailY: 0, gateOpen: 0, announced: {},
-    fogT: -1, bia: BIATH ? BIATH.init() : null, lhu: { t: -1, next: 0, n: 0, bags: [] }, coins: [], groundCoins: []
+    fogT: -1, bia: BIATH ? BIATH.init() : null, lhu: { t: -1, next: 0, n: 0, bags: [] }, coins: [], groundCoins: [],
+    secretT: -1, jumpT: -1
   };
 
   function resetRace() {
@@ -791,6 +896,7 @@
     // V4 : canons à neige (fogT < 0 : pas encore en marche), biathlète, Frères Lhuillier
     S.fogT = -1; S.bia = BIATH ? BIATH.init() : null;
     S.lhu = { t: -1, next: 0, n: 0, bags: [] }; S.coins = []; S.groundCoins = [];
+    S.secretT = -1; S.jumpT = -1; // V5 : passage secret pas encore découvert, pas de saut
     S.ref = window.Famille ? Famille.reference() : null; // record de la famille au départ
     input.keys.clear(); input.touch = null;
     showScreen(null);
@@ -862,6 +968,13 @@
     if (S.mode === 'race' && S.countdown > -1) S.countdown -= dt;
 
     if (ECOLE && S.y >= ECOLE.E.depart && (S.mode === 'race' || S.mode === 'fallen')) S.schoolT += dt;
+    // V5 : passage secret (apparition du couloir) et saut sur le ressaut
+    if (S.secretT >= 0) S.secretT += dt;
+    if (S.jumpT >= 0) {
+      const was = S.jumpT;
+      S.jumpT += dt;
+      if (was < CFG.jumpTime && S.jumpT >= CFG.jumpTime) { puff(S.x, S.y, 10, 2.5); if (window.Sons && Sons.on.atterrissage) Sons.on.atterrissage(); }
+    }
     v4Step(dt);
     if (S.mode === 'race') raceStep(dt);
     else if (S.mode === 'finishing') finishStep(dt);
@@ -888,7 +1001,10 @@
     if (S.particles.length > 400) S.particles.splice(0, S.particles.length - 400);
 
     // caméra : suit le couloir avec un peu d'anticipation, et le skieur
-    const target = 0.6 * TRACK.center(S.y + 10) + 0.4 * S.x;
+    // V5 : dans le passage secret, la caméra suit le couloir
+    const inSecretNow = SECRET && S.secretT >= 0 && SECRET.inside(S.x, S.y, 1) && !inMain(S.x, S.y, -1);
+    const guide = inSecretNow ? SECRET.center(Math.min(SECRET.y1, S.y + 6)) : TRACK.center(S.y + 10);
+    const target = 0.6 * guide + 0.4 * S.x;
     const endView = S.mode === 'finishing' || S.mode === 'results';
     S.frac = (S.frac || CFG.skierScreenFrac) + ((endView ? 0.42 : CFG.skierScreenFrac) - (S.frac || CFG.skierScreenFrac)) * (1 - Math.exp(-dt / 0.8));
     const ty = S.y - viewH() * S.frac;
@@ -906,7 +1022,9 @@
         showBanner('Champ de bosses !');
       }
     }
-    if (ECOLE && !S.announced.ecole && (S.mode === 'race' || S.mode === 'countdown')) {
+    // (V5 : pas d'annonce de l'école de ski si on l'évite par le passage secret)
+    const inSecretRun = SECRET && S.secretT >= 0 && S.y < SECRET.y1 && !inMain(S.x, S.y, 0);
+    if (ECOLE && !S.announced.ecole && !inSecretRun && (S.mode === 'race' || S.mode === 'countdown')) {
       const ks = ECOLE.positions(S.schoolT || 0);
       const top = Math.min(...ks.map((k) => k.y)), bot = Math.max(...ks.map((k) => k.y));
       if (bottom >= top - 1 && S.y < bot) { S.announced.ecole = true; showBanner('Le moniteur de ski !'); }
@@ -1111,9 +1229,22 @@
       return;
     }
 
-    // sapins du bord
+    // sapins du bord (V5 : sauf dans le passage secret, une fois découvert, ou là où on peut y entrer)
     const c = TRACK.center(S.y), hw = TRACK.halfW(S.y);
-    if (Math.abs(S.x - c) > hw - CFG.edgeMargin && S.y > CFG.startY + 1) { fall('arbre'); return; }
+    if (Math.abs(S.x - c) > hw - CFG.edgeMargin && S.y > CFG.startY + 1) {
+      const inSecret = SECRET && SECRET.inside(S.x, S.y, -CFG.edgeMargin);
+      if (!inSecret || (S.secretT < 0 && S.y > SECRET.Q.finEntree)) { fall('arbre'); return; }
+      if (S.secretT < 0) {
+        S.secretT = 0;
+        showBanner('Passage secret !', 'secret');
+        if (window.Sons && Sons.on.secret) Sons.on.secret();
+      }
+    }
+    // V5 : le ressaut à la sortie du passage secret fait sauter le skieur
+    if (SECRET && S.secretT >= 0 && S.jumpT < 0 && prevY < SECRET.Q.ressaut && S.y >= SECRET.Q.ressaut && SECRET.inside(S.x, S.y, 0)) {
+      S.jumpT = 0;
+      if (window.Sons && Sons.on.saut) Sons.on.saut();
+    }
 
     // chasse-neige garés
     for (const e of plows) {
@@ -1259,6 +1390,40 @@
       ctx.stroke();
     }
 
+    // V5 : passage secret, qui apparaît quand on le découvre
+    const rev = secretReveal();
+    if (SECRET && rev > 0 && yBot > SECRET.y0 && yTop < SECRET.y1) {
+      const y0 = Math.max(yTop, SECRET.y0), y1 = Math.min(yBot, SECRET.y1);
+      ctx.globalAlpha = rev;
+      ctx.fillStyle = '#f6f9fd';
+      ctx.beginPath();
+      for (let y = y0; y <= y1; y += 0.5) ctx.lineTo(wx(SECRET.center(y) - SECRET.halfW(y)), wy(y));
+      for (let y = y1; y >= y0; y -= 0.5) ctx.lineTo(wx(SECRET.center(y) + SECRET.halfW(y)), wy(y));
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(150,175,205,0.35)'; ctx.lineWidth = 3;
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        for (let y = y0; y <= y1; y += 0.5) {
+          const x = SECRET.center(y) + side * SECRET.halfW(y);
+          if (inMain(x, y, 0.2)) { ctx.stroke(); ctx.beginPath(); continue; }
+          ctx.lineTo(wx(x), wy(y));
+        }
+        ctx.stroke();
+      }
+      // ressaut : une petite bosse de neige en travers du couloir, avec son ombre en contrebas
+      const ry = SECRET.Q.ressaut;
+      if (ry > yTop - 3 && ry < yBot + 3) {
+        const c = SECRET.center(ry), hw = SECRET.halfW(ry) - 0.2;
+        ctx.fillStyle = 'rgba(110,140,185,0.35)';
+        ctx.beginPath(); ctx.ellipse(wx(c), wy(ry + 0.7), hw * SCALE, 0.7 * SCALE, 0, 0, Math.PI * 2); ctx.fill();
+        const grd = ctx.createLinearGradient(0, wy(ry - 1.6), 0, wy(ry + 0.4));
+        grd.addColorStop(0, 'rgba(246,249,253,0)'); grd.addColorStop(0.6, '#ffffff'); grd.addColorStop(1, '#dbe6f3');
+        ctx.fillStyle = grd;
+        ctx.beginPath(); ctx.ellipse(wx(c), wy(ry - 0.5), hw * SCALE, 1.1 * SCALE, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
     // neige lourde, un peu plus jaune (neige sale)
     if (HEAVY && yBot > HEAVY.debut - 10 && yTop < HEAVY.fin) {
       const y0 = Math.max(yTop, HEAVY.debut - 8), y1 = Math.min(yEnd, HEAVY.fin);
@@ -1332,8 +1497,13 @@
       const t = trees[i];
       const sx = wx(t.x);
       if (sx < -3 * SCALE || sx > W + 3 * SCALE) continue;
-      items.push({ y: t.y, draw: () => drawTreeSprite(t) });
+      if (t.mask || t.reveal) {
+        const a = t.mask ? 1 - rev : rev;
+        if (a <= 0.01) continue;
+        items.push({ y: t.y, draw: () => { ctx.globalAlpha = a; drawTreeSprite(t); ctx.globalAlpha = 1; } });
+      } else items.push({ y: t.y, draw: () => drawTreeSprite(t) });
     }
+    if (SECRET && SECRET.Q.panneau > yTop - 3 && SECRET.Q.panneau < yBot + 3) items.push({ y: SECRET.Q.panneau, draw: drawSignpost });
     if (yTop < 2 && yBot > -12) {
       items.push({ y: 0.01, draw: () => drawArch(0, 'DÉPART', '#e53935') });
       items.push({ y: CFG.gateY, draw: drawGate });
@@ -1375,6 +1545,8 @@
     items.push({ y: S.y, draw: drawPlayer });
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
+    // V5 : bulle « Yeehaa ! » pendant le saut du passage secret
+    if (S.jumpT >= 0 && S.jumpT < CFG.yeehaaTime && S.mode !== 'fallen') drawYeehaa();
 
     // V4 : sacs en vol et pièces d'or qui retombent (au-dessus de tout)
     if (v4 && LHU) for (const b of S.lhu.bags) if (!b.landed) drawFlyingBag(b);
@@ -1912,6 +2084,68 @@
     }
   }
 
+  // V5 : apparition du passage secret (0 = caché, 1 = visible)
+  function secretReveal() {
+    return SECRET && S.secretT >= 0 && S.mode !== 'home' ? Math.min(1, S.secretT / CFG.revealTime) : 0;
+  }
+
+  // V5 : vieux panneau de direction en bois, à moitié enfoui sous la neige, au bord gauche de la piste
+  function drawSignpost() {
+    const y = SECRET.Q.panneau, x = TRACK.center(y) - TRACK.halfW(y) + 1.2;
+    const sx = wx(x), sy = wy(y), s = SCALE * 1.4;
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(-0.16); // un peu penché
+    // poteau
+    ctx.fillStyle = '#6d4c2f';
+    ctx.fillRect(-0.09 * s, -1.25 * s, 0.18 * s, 1.25 * s);
+    // planche en forme de flèche qui pointe vers la forêt, en bas à gauche
+    ctx.save();
+    ctx.translate(0, -1.05 * s);
+    ctx.rotate(0.35);
+    ctx.fillStyle = '#9a6b3f'; ctx.strokeStyle = '#5b3d22'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0.35 * s, -0.2 * s); ctx.lineTo(-0.55 * s, -0.2 * s); ctx.lineTo(-0.8 * s, 0); ctx.lineTo(-0.55 * s, 0.2 * s); ctx.lineTo(0.35 * s, 0.2 * s);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(70,45,25,0.5)';
+    ctx.beginPath(); ctx.moveTo(-0.45 * s, -0.05 * s); ctx.lineTo(0.25 * s, -0.05 * s); ctx.moveTo(-0.4 * s, 0.07 * s); ctx.lineTo(0.15 * s, 0.07 * s); ctx.stroke();
+    // un peu de neige sur la planche
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.ellipse(-0.1 * s, -0.2 * s, 0.4 * s, 0.07 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    ctx.restore();
+    // tas de neige qui recouvre le bas du poteau et le bout de la planche
+    ctx.fillStyle = 'rgba(110,140,185,0.25)';
+    ctx.beginPath(); ctx.ellipse(sx + 0.15 * s, sy + 0.1 * s, 0.9 * s, 0.3 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f4f8fd';
+    ctx.beginPath(); ctx.ellipse(sx - 0.05 * s, sy - 0.25 * s, 0.85 * s, 0.42 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(sx - 0.45 * s, sy - 0.45 * s, 0.45 * s, 0.32 * s, 0, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // V5 : bulle de bande dessinée « Yeehaa ! » au-dessus du skieur pendant le saut
+  function drawYeehaa() {
+    const e = S.jumpT, k = Math.min(1, e / 0.15) * Math.min(1, (CFG.yeehaaTime - e) / 0.25);
+    const lift = e < CFG.jumpTime ? Math.sin(Math.PI * e / CFG.jumpTime) * CFG.jumpLift * CFG.skierPx / 52 : 0;
+    const x = wx(S.x) + 34, y = wy(S.y) - CFG.skierPx - lift - 6;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, k);
+    ctx.translate(x, y);
+    ctx.scale(0.8 + 0.2 * Math.min(1, e / 0.15), 0.8 + 0.2 * Math.min(1, e / 0.15));
+    ctx.font = `900 20px ${FONT}`;
+    const txt = 'Yeehaa !', w = ctx.measureText(txt).width + 24, h = 34;
+    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#1b2a44'; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(-w / 2 + 14, h / 2); ctx.lineTo(-w / 2 + 2, h / 2 + 14); ctx.lineTo(-w / 2 + 26, h / 2);
+    ctx.stroke(); ctx.fill();
+    roundRect(ctx, -w / 2, -h / 2, w, h, 16); ctx.fill(); ctx.stroke();
+    // on recouvre le raccord entre la pointe et la bulle
+    ctx.beginPath(); ctx.moveTo(-w / 2 + 13, h / 2 - 2); ctx.lineTo(-w / 2 + 27, h / 2 - 2); ctx.lineTo(-w / 2 + 3, h / 2 + 12); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#1b2a44';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(txt, 0, 1);
+    ctx.restore();
+  }
+
   function drawPlayer() {
     const pose = {
       theta: S.th,
@@ -1924,6 +2158,12 @@
       fallen: S.mode === 'fallen',
       lift: S.lift, t: S.t
     };
+    // V5 : saut sur le ressaut du passage secret, skis écartés
+    if (S.jumpT >= 0 && S.jumpT < CFG.jumpTime && S.mode === 'race') {
+      const q = S.jumpT / CFG.jumpTime;
+      pose.lift = Math.sin(Math.PI * q) * CFG.jumpLift;
+      pose.jump = true; pose.cheer = true; pose.crouch = 0; pose.plow = false;
+    }
     drawSkier(ctx, wx(S.x), wy(S.y), CFG.skierPx, pose);
   }
 
@@ -2022,11 +2262,11 @@
         ctx.save();
         ctx.translate(W / 2, y + bh / 2);
         ctx.rotate(-0.02);
-        const noir = S.banner.style === 'noir';
-        ctx.fillStyle = noir ? '#000000' : '#c62828';
+        const noir = S.banner.style === 'noir', vert = S.banner.style === 'secret';
+        ctx.fillStyle = noir ? '#000000' : vert ? '#1b5e20' : '#c62828';
         ctx.beginPath(); ctx.moveTo(-w / 2 - 14, -bh / 2 + 6); ctx.lineTo(-w / 2, -bh / 2 + 6); ctx.lineTo(-w / 2, bh / 2 + 6); ctx.lineTo(-w / 2 - 14, bh / 2 + 6); ctx.lineTo(-w / 2 - 6, 6); ctx.closePath(); ctx.fill();
         ctx.beginPath(); ctx.moveTo(w / 2 + 14, -bh / 2 + 6); ctx.lineTo(w / 2, -bh / 2 + 6); ctx.lineTo(w / 2, bh / 2 + 6); ctx.lineTo(w / 2 + 14, bh / 2 + 6); ctx.lineTo(w / 2 + 6, 6); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = noir ? '#1a1a1a' : '#e53935';
+        ctx.fillStyle = noir ? '#1a1a1a' : vert ? '#2e7d32' : '#e53935';
         roundRect(ctx, -w / 2, -bh / 2, w, bh, 6); ctx.fill();
         ctx.strokeStyle = noir ? '#ffffff' : '#ffca28'; ctx.lineWidth = 2.5;
         roundRect(ctx, -w / 2 + 4, -bh / 2 + 4, w - 8, bh - 8, 4); ctx.stroke();
@@ -2202,7 +2442,7 @@
   function goHome() {
     S.mode = 'home';
     S.x = TRACK.center(CFG.startY); S.y = CFG.startY; S.v = 0; S.th = 0; S.started = false; S.gateOpen = 0;
-    S.particles = []; S.trail = [];
+    S.particles = []; S.trail = []; S.secretT = -1; S.jumpT = -1;
     S.camX = S.x; S.camY = S.y - viewH() * CFG.skierScreenFrac;
     showScreen('home');
     if (window.Sons) { Sons.on.stop(); Sons.music(true); }
@@ -2266,5 +2506,5 @@
   requestAnimationFrame(frame);
 
   // Accès pour les tests automatiques et le dessin des icônes
-  window.PTPSC = { drawSkier, state: S, input, track: TRACK, bumps, plows, muds, ecole: ECOLE, canons: CANONS, biathlete: BIATH, lhuillier: LHU, skis: SKIS, setSki: (id) => { ski = SKIS.find((k) => k.id === id) || ski; }, cfg: CFG, step, fmt, resetRace, goHome, showScreen };
+  window.PTPSC = { drawSkier, state: S, input, track: TRACK, bumps, plows, muds, ecole: ECOLE, canons: CANONS, biathlete: BIATH, lhuillier: LHU, secret: SECRET, trees, skis: SKIS, setSki: (id) => { ski = SKIS.find((k) => k.id === id) || ski; }, cfg: CFG, step, fmt, resetRace, goHome, showScreen };
 })();
