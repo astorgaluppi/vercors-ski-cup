@@ -41,7 +41,9 @@
     heavyDec: 6 * KMH,         // freinage naturel jusqu'à la nouvelle vitesse maximale
     mudHitMul: 0.82,           // zone de chute un peu plus petite que la plaque dessinée
     // V5 : passage secret
-    revealTime: 0.6,           // durée d'apparition du couloir (s)
+    revealTime: 0.15,          // durée d'apparition du couloir (s) (V5 : quasi immédiate)
+    funnel: 7,                 // entrée en entonnoir : largeur en plus côté forêt au début de la zone d'entrée (m)
+    revealBand: 2.5,           // le couloir apparaît dès qu'on entre dans cette bande au bord gauche, en allant vers la gauche (m)
     jumpTime: 0.75,            // durée du saut sur le ressaut (s)
     jumpLift: 26,              // hauteur du saut à l'écran (px pour un skieur de 52 px)
     yeehaaTime: 1.5            // durée de la bulle « Yeehaa ! » (s)
@@ -170,7 +172,19 @@
       angle(y) { const [i, t] = idx(y); return ang[i] + (ang[i + 1] - ang[i]) * t; },
       halfW(y) { return half / Math.cos(this.angle(y)); },
       // vrai si (x, y) est dans le couloir, à « pad » mètres près (pad négatif : plus à l'intérieur)
-      inside(x, y, pad) { return y >= y0 && y <= y1 && Math.abs(x - this.center(y)) < this.halfW(y) + (pad || 0); }
+      // demi-largeur d'un côté (s = -1 : gauche, côté forêt ; 1 : droite). À l'entrée, le couloir s'évase vers la
+      // gauche en entonnoir, puis se resserre jusqu'à sa largeur normale 15 m après la fin de la zone d'entrée.
+      side(y, s) {
+        const hw = this.halfW(y);
+        if (s > 0) return hw;
+        const yEnd = Q.finEntree + 15;
+        return hw + CFG.funnel * Math.max(0, Math.min(1, (yEnd - y) / (yEnd - y0)));
+      },
+      inside(x, y, pad) {
+        if (y < y0 || y > y1) return false;
+        const d = x - this.center(y);
+        return d < 0 ? -d < this.side(y, -1) + (pad || 0) : d < this.halfW(y) + (pad || 0);
+      }
     };
   })();
   const inMain = (x, y, pad) => Math.abs(x - TRACK.center(y)) < TRACK.halfW(y) + (pad || 0);
@@ -214,7 +228,7 @@
         if (y > Q.finEntree + 30 && y < SECRET.y1 - 30) continue;
         for (let j = 0; j < 3; j++) {
           k++;
-          const x = SECRET.center(y) + (hash(k) - 0.5) * 2 * SECRET.halfW(y);
+          const x = SECRET.center(y) - SECRET.side(y, -1) + hash(k) * (SECRET.side(y, -1) + SECRET.halfW(y));
           if (inMain(x, y, 0.6)) continue;
           trees.push({ x, y: y + hash(k * 2.1) * 2.8, s: 0.85 + hash(k * 4.7) * 0.3, v: k % 3, mask: true });
         }
@@ -223,7 +237,7 @@
       for (let y = SECRET.y0 + 1; y < SECRET.y1 + 2; y += 2.4) {
         for (const side of [-1, 1]) {
           k++;
-          const x = SECRET.center(y) + side * (SECRET.halfW(y) + 1.2 + hash(k) * 0.4);
+          const x = SECRET.center(y) + side * (SECRET.side(y, side) + 1.2 + hash(k) * 0.4);
           if (inMain(x, y, 1.6)) continue;
           trees.push({ x, y: y + (hash(k + 0.5) - 0.5) * 0.6, s: 0.9 + hash(k * 3.1) * 0.2, v: k % 3, reveal: true });
         }
@@ -236,7 +250,7 @@
             if (hash(k * 1.7) < 0.2) continue;
             const yy = y + hash(k * 2.3) * 3.2;
             const yc = Math.max(SECRET.y0, Math.min(SECRET.y1, yy));
-            const x = SECRET.center(yc) + side * (SECRET.halfW(yc) + 3.4 + hash(k) * 20);
+            const x = SECRET.center(yc) + side * (SECRET.side(yc, side) + 3.4 + hash(k) * 20);
             if (inMain(x, yy, 3) || SECRET.inside(x, yy, 2.2)) continue;
             trees.push({ x, y: yy, s: 0.8 + hash(k * 5.3) * 0.45, v: k % 3 });
           }
@@ -1231,6 +1245,11 @@
 
     // sapins du bord (V5 : sauf dans le passage secret, une fois découvert, ou là où on peut y entrer)
     const c = TRACK.center(S.y), hw = TRACK.halfW(S.y);
+    // V5 : le passage apparaît dès qu'on se dirige vers lui, au bord gauche de la zone d'entrée
+    if (SECRET && S.secretT < 0 && S.y >= SECRET.Q.entree && S.y <= SECRET.Q.finEntree && S.x < c - hw + CFG.revealBand && S.th < -0.05) {
+      S.secretT = 0;
+      showBanner('Hors-piste !', 'secret');
+    }
     if (Math.abs(S.x - c) > hw - CFG.edgeMargin && S.y > CFG.startY + 1) {
       const inSecret = SECRET && SECRET.inside(S.x, S.y, -CFG.edgeMargin);
       if (!inSecret || (S.secretT < 0 && S.y > SECRET.Q.finEntree)) { fall('arbre'); return; }
@@ -1397,14 +1416,14 @@
       ctx.globalAlpha = rev;
       ctx.fillStyle = '#f6f9fd';
       ctx.beginPath();
-      for (let y = y0; y <= y1; y += 0.5) ctx.lineTo(wx(SECRET.center(y) - SECRET.halfW(y)), wy(y));
+      for (let y = y0; y <= y1; y += 0.5) ctx.lineTo(wx(SECRET.center(y) - SECRET.side(y, -1)), wy(y));
       for (let y = y1; y >= y0; y -= 0.5) ctx.lineTo(wx(SECRET.center(y) + SECRET.halfW(y)), wy(y));
       ctx.closePath(); ctx.fill();
       ctx.strokeStyle = 'rgba(150,175,205,0.35)'; ctx.lineWidth = 3;
       for (const side of [-1, 1]) {
         ctx.beginPath();
         for (let y = y0; y <= y1; y += 0.5) {
-          const x = SECRET.center(y) + side * SECRET.halfW(y);
+          const x = SECRET.center(y) + side * SECRET.side(y, side);
           if (inMain(x, y, 0.2)) { ctx.stroke(); ctx.beginPath(); continue; }
           ctx.lineTo(wx(x), wy(y));
         }
@@ -1430,7 +1449,7 @@
       ctx.fillStyle = 'rgba(255,140,0,0.35)';
       ctx.beginPath();
       for (let y = Q.entree; y <= Q.finEntree; y += 1) ctx.lineTo(wx(TRACK.center(y) - TRACK.halfW(y)), wy(y));
-      for (let y = Q.finEntree; y >= Q.entree; y -= 1) ctx.lineTo(wx(TRACK.center(y) - TRACK.halfW(y) + 2.5), wy(y));
+      for (let y = Q.finEntree; y >= Q.entree; y -= 1) ctx.lineTo(wx(TRACK.center(y) - TRACK.halfW(y) + CFG.revealBand), wy(y));
       ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#e65100'; ctx.font = `900 14px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
       for (let y = Q.entree + 6; y < Q.finEntree; y += 12) ctx.fillText('← ENTRÉE', wx(TRACK.center(y) - TRACK.halfW(y) + 2.7), wy(y));
