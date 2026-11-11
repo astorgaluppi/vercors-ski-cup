@@ -89,7 +89,6 @@ window.PISTE_V1 = {
   passageSecret: {
     // (V5 : zone d'entrée de 668 à 692 m, qui commence au panneau)
     panneau: 668, entree: 668, finEntree: 692, largeur: 7, recouvrement: 2.6, ressaut: 908,
-    repereProvisoire: true, // VERSION DE TEST SEULEMENT : marque la zone d'entrée sur la neige (à retirer avant publication)
     troncons: [
       { longueur: 28, angle: 0 },     // entrée, le long de la piste
       { longueur: 24, angle: -32 },
