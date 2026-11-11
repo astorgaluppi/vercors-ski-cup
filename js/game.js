@@ -2157,13 +2157,15 @@
   function drawYeehaa() {
     const e = S.jumpT, k = Math.min(1, e / 0.15) * Math.min(1, (CFG.yeehaaTime - e) / 0.25);
     const lift = e < CFG.jumpTime ? Math.sin(Math.PI * e / CFG.jumpTime) * CFG.jumpLift * CFG.skierPx / 52 : 0;
-    const x = wx(S.x) + 34, y = wy(S.y) - CFG.skierPx - lift - 6;
     ctx.save();
+    ctx.font = `900 20px ${FONT}`;
+    const txt = 'Yeehaa !', w = ctx.measureText(txt).width + 24, h = 34;
+    // la pointe de la bulle arrive juste au-dessus et à droite de la tête du skieur, sans la recouvrir
+    const headX = wx(S.x) + 16, headY = wy(S.y) - CFG.skierPx * 1.02 - lift - 12;
+    const x = headX + w / 2 - 2, y = headY - h / 2 - 14;
     ctx.globalAlpha = Math.max(0, k);
     ctx.translate(x, y);
     ctx.scale(0.8 + 0.2 * Math.min(1, e / 0.15), 0.8 + 0.2 * Math.min(1, e / 0.15));
-    ctx.font = `900 20px ${FONT}`;
-    const txt = 'Yeehaa !', w = ctx.measureText(txt).width + 24, h = 34;
     ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#1b2a44'; ctx.lineWidth = 2.5;
     ctx.beginPath();
     ctx.moveTo(-w / 2 + 14, h / 2); ctx.lineTo(-w / 2 + 2, h / 2 + 14); ctx.lineTo(-w / 2 + 26, h / 2);
