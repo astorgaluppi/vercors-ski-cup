@@ -1236,7 +1236,7 @@
       if (!inSecret || (S.secretT < 0 && S.y > SECRET.Q.finEntree)) { fall('arbre'); return; }
       if (S.secretT < 0) {
         S.secretT = 0;
-        showBanner('Passage secret !', 'secret');
+        showBanner('Hors-piste !', 'secret');
         if (window.Sons && Sons.on.secret) Sons.on.secret();
       }
     }
