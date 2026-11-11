@@ -2140,17 +2140,16 @@
     ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.strokeStyle = 'rgba(70,45,25,0.5)';
     ctx.beginPath(); ctx.moveTo(-0.45 * s, -0.05 * s); ctx.lineTo(0.25 * s, -0.05 * s); ctx.moveTo(-0.4 * s, 0.07 * s); ctx.lineTo(0.15 * s, 0.07 * s); ctx.stroke();
-    // un peu de neige sur la planche
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath(); ctx.ellipse(-0.1 * s, -0.2 * s, 0.4 * s, 0.07 * s, 0, 0, Math.PI * 2); ctx.fill();
+    // une bonne couche de neige sur le dessus de la planche
+    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = 'rgba(110,140,185,0.45)'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.ellipse(-0.12 * s, -0.25 * s, 0.52 * s, 0.13 * s, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0.12 * s, -0.33 * s, 0.22 * s, 0.1 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-0.35 * s, -0.31 * s, 0.18 * s, 0.08 * s, 0, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
     ctx.restore();
-    // tas de neige qui recouvre le bas du poteau et le bout de la planche
+    // petite ombre au pied du poteau (plus de tas de neige)
     ctx.fillStyle = 'rgba(110,140,185,0.25)';
-    ctx.beginPath(); ctx.ellipse(sx + 0.15 * s, sy + 0.1 * s, 0.9 * s, 0.3 * s, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#f4f8fd';
-    ctx.beginPath(); ctx.ellipse(sx - 0.05 * s, sy - 0.25 * s, 0.85 * s, 0.42 * s, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(sx - 0.45 * s, sy - 0.45 * s, 0.45 * s, 0.32 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(sx + 0.1 * s, sy + 0.05 * s, 0.35 * s, 0.12 * s, 0, 0, Math.PI * 2); ctx.fill();
   }
 
   // V5 : bulle de bande dessinée « Yeehaa ! » au-dessus du skieur pendant le saut
