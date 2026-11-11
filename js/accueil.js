@@ -35,7 +35,7 @@
   const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
   const rgb = (a) => `rgb(${a[0]},${a[1]},${a[2]})`;
   // couleurs du feuillage (clair, ombre) et de la neige au sol, du plus lointain au plus proche
-  const FAR = { leaf: [150, 172, 198], shade: [132, 155, 184], snow: [214, 226, 241] };
+  const FAR = { leaf: [150, 172, 198], shade: [132, 155, 184], snow: [213, 230, 248] };
   const MID = { leaf: [74, 122, 128], shade: [58, 104, 112], snow: [228, 237, 247] };
   const NEAR = { leaf: [31, 94, 58], shade: [22, 74, 45], snow: [244, 248, 253] };
   const colorAt = (d, key) => d < 0.5 ? mix(FAR[key], MID[key], d / 0.5) : mix(MID[key], NEAR[key], (d - 0.5) / 0.5);
@@ -73,7 +73,8 @@
     const top = Math.max(40, lr.top - hr.top + lr.height * 0.7);
     // neige du sous-bois, plus claire vers le bas
     const sg = g.createLinearGradient(0, top - 10, 0, h);
-    sg.addColorStop(0, 'rgba(214,226,241,0)'); sg.addColorStop(0.08, 'rgb(214,226,241)'); sg.addColorStop(1, 'rgb(244,248,253)');
+    // (V5 : même bleu que le fond du haut de l'écran, pour qu'il n'y ait aucune cassure)
+    sg.addColorStop(0, 'rgb(213,230,248)'); sg.addColorStop(1, 'rgb(244,248,253)');
     g.fillStyle = sg; g.fillRect(0, top - 10, w, h - top + 10);
     // rangées de sapins, des plus lointaines (petites) aux plus proches (grandes)
     let y = top, row = 0;
@@ -93,7 +94,7 @@
     }
     // légère brume sur les rangées du fond
     const fog = g.createLinearGradient(0, top - 20, 0, top + (h - top) * 0.35);
-    fog.addColorStop(0, 'rgba(212,232,253,0.55)'); fog.addColorStop(1, 'rgba(212,232,253,0)');
+    fog.addColorStop(0, 'rgba(213,230,248,0.85)'); fog.addColorStop(0.15, 'rgba(213,230,248,0.5)'); fog.addColorStop(1, 'rgba(213,230,248,0)');
     g.fillStyle = fog; g.fillRect(0, top - 20, w, (h - top) * 0.35 + 20);
   }
   let pending = 0;
