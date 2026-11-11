@@ -154,7 +154,7 @@ window.Famille = (() => {
     return { html: rows.join(''), rank: me >= 0 ? me + 1 : null, total: ranked.length };
   }
 
-  // V3 : podium des 3 meilleurs temps de la famille sur la page d'accueil (marches 2-1-3)
+  // V3 : podium des 3 meilleurs temps de la famille sur la page d'accueil (2-1-3) ; V5 : des médailles au lieu des marches
   function fillPodium() {
     const box = $('home-podium');
     if (!box) return;
@@ -167,8 +167,8 @@ window.Famille = (() => {
     }
     box.innerHTML = [1, 0, 2].map((i) => {
       const b = ranked[i];
-      return `<div class="p p${i + 1}${b ? '' : ' empty'}"><span class="nm">${b ? esc(b.prenom) : '…'}</span>` +
-        `<span class="tm">${b ? fmtMs(b.meilleur_ms) : '--'}</span><span class="st">${i + 1}</span></div>`;
+      return `<div class="p p${i + 1}${b ? '' : ' empty'}"><span class="md"><span class="st">${i + 1}</span></span><span class="nm">${b ? esc(b.prenom) : '…'}</span>` +
+        `<span class="tm">${b ? fmtMs(b.meilleur_ms) : '--'}</span></div>`;
     }).join('');
   }
 
