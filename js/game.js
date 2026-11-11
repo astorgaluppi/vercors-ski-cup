@@ -1534,7 +1534,7 @@
         items.push({ y: t.y, draw: () => { ctx.globalAlpha = a; drawTreeSprite(t); ctx.globalAlpha = 1; } });
       } else items.push({ y: t.y, draw: () => drawTreeSprite(t) });
     }
-    if (SECRET && SECRET.Q.panneau > yTop - 3 && SECRET.Q.panneau < yBot + 3) items.push({ y: SECRET.Q.panneau + 4, draw: drawSignpost }); // dessiné devant les sapins voisins
+    if (SECRET && SECRET.Q.panneau > yTop - 3 && SECRET.Q.panneau < yBot + 3) items.push({ y: SECRET.Q.panneau + 4, draw: drawSignpost }); // petit, au pied des sapins, la flèche par-dessus
     if (yTop < 2 && yBot > -12) {
       items.push({ y: 0.01, draw: () => drawArch(0, 'DÉPART', '#e53935') });
       items.push({ y: CFG.gateY, draw: drawGate });
@@ -2122,8 +2122,8 @@
 
   // V5 : vieux panneau de direction en bois, à moitié enfoui sous la neige, au bord gauche de la piste
   function drawSignpost() {
-    const y = SECRET.Q.panneau, x = TRACK.center(y) - TRACK.halfW(y) + 1.8;
-    const sx = wx(x), sy = wy(y), s = SCALE * 1.4;
+    const y = SECRET.Q.panneau, x = TRACK.center(y) - TRACK.halfW(y) + 0.45; // V5 : au pied des sapins du bord
+    const sx = wx(x), sy = wy(y), s = SCALE * 1.05;
     ctx.save();
     ctx.translate(sx, sy);
     ctx.rotate(-0.16); // un peu penché
@@ -2140,17 +2140,16 @@
     ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.strokeStyle = 'rgba(70,45,25,0.5)';
     ctx.beginPath(); ctx.moveTo(-0.45 * s, -0.05 * s); ctx.lineTo(0.25 * s, -0.05 * s); ctx.moveTo(-0.4 * s, 0.07 * s); ctx.lineTo(0.15 * s, 0.07 * s); ctx.stroke();
-    // un peu de neige sur la planche
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath(); ctx.ellipse(-0.1 * s, -0.2 * s, 0.4 * s, 0.07 * s, 0, 0, Math.PI * 2); ctx.fill();
+    // une bonne couche de neige sur le dessus de la planche
+    ctx.fillStyle = '#ffffff'; ctx.strokeStyle = 'rgba(110,140,185,0.45)'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.ellipse(-0.12 * s, -0.25 * s, 0.52 * s, 0.13 * s, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0.12 * s, -0.33 * s, 0.22 * s, 0.1 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-0.35 * s, -0.31 * s, 0.18 * s, 0.08 * s, 0, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
     ctx.restore();
-    // tas de neige qui recouvre le bas du poteau et le bout de la planche
+    // petite ombre au pied du poteau (plus de tas de neige)
     ctx.fillStyle = 'rgba(110,140,185,0.25)';
-    ctx.beginPath(); ctx.ellipse(sx + 0.15 * s, sy + 0.1 * s, 0.9 * s, 0.3 * s, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#f4f8fd';
-    ctx.beginPath(); ctx.ellipse(sx - 0.05 * s, sy - 0.25 * s, 0.85 * s, 0.42 * s, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(sx - 0.45 * s, sy - 0.45 * s, 0.45 * s, 0.32 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(sx + 0.1 * s, sy + 0.05 * s, 0.35 * s, 0.12 * s, 0, 0, Math.PI * 2); ctx.fill();
   }
 
   // V5 : bulle de bande dessinée « Yeehaa ! » au-dessus du skieur pendant le saut
