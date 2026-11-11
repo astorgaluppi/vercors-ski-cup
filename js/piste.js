@@ -8,16 +8,16 @@ window.PISTE_V1 = {
   largeur: 24,             // largeur du couloir (environ 70 % de l'écran)
   intermediaires: [500, 1000],
   troncons: [
-    { longueur: 370, angle: 0 },     // départ + 1er champ de bosses (200 m) + canons à neige (300 m)
-    { longueur: 70,  angle: 25 },
+    { longueur: 370, angle: 0 },     // départ + 1er champ de bosses (200 m) + canons à neige (365 m)
+    { longueur: 70,  angle: 25 },     // diagonale dans le nuage des canons à neige
     { longueur: 50,  angle: 0 },
-    { longueur: 70,  angle: -25 },   // biathlète (vers 500 m)
-    { longueur: 140, angle: 0 },     // intermédiaire 1 (500 m)
+    { longueur: 70,  angle: -25 },
+    { longueur: 140, angle: 0 },     // intermédiaire 1 (500 m) + biathlète (vers 615 m)
     { longueur: 100, angle: 30 },
     { longueur: 80,  angle: 0 },
     { longueur: 80,  angle: -30 },
-    { longueur: 190, angle: 0 },     // intermédiaire 2 (1000 m) + Frères Lhuillier (1000 m) + 2e champ de bosses (1100 m)
-    { longueur: 80,  angle: 20 },
+    { longueur: 190, angle: 0 },     // intermédiaire 2 (1000 m) + Frères Lhuillier (1000 m)
+    { longueur: 80,  angle: 20 },     // 2e champ de bosses (1 180 m, V4.1)
     { longueur: 90,  angle: 0 },
     { longueur: 80,  angle: -20 },
     { longueur: 200, angle: 0 }      // ligne droite d'arrivée + aire d'arrêt
@@ -27,7 +27,7 @@ window.PISTE_V1 = {
     // minimale entre deux bosses (m). couloirs : la piste est découpée en bandes verticales qui reçoivent chacune
     // au moins une bosse, pour qu'on ne puisse pas traverser un champ tout droit.
     { debut: 200,  longueur: 50,  nombre: 20, ecartMin: 4.5, couloirs: 14 },  // premier champ, plus facile
-    { debut: 1100, longueur: 50,  nombre: 50, ecartMin: 3.0, couloirs: 14 }   // deuxième champ, plus difficile
+    { debut: 1180, longueur: 50,  nombre: 50, ecartMin: 3.0, couloirs: 14 }   // deuxième champ, plus difficile (V4.1 : 1 180 m)
   ],
 
   // V2 — deux chasse-neige garés de biais, de chaque côté, en chicane très large (échauffement).
@@ -44,20 +44,29 @@ window.PISTE_V1 = {
   // descente : mètres de pente descendus à chaque traversée ; marge : distance gardée avec les sapins (m).
   ecoleDeSki: { debut: 815, depart: 745, vitesse: 8, enfants: 6, ecart: 5, descente: 7, marge: 2.5 },
 
-  // V4 — Canons à neige (« Canons à neige ! »), juste après le 1er champ de bosses, vers 300 m.
+  // V4 — Canons à neige (« Canons à neige ! »), vers 365 m (V4.1 : 100 m plus loin), pour que le nuage couvre aussi
+  // le début du secteur en diagonale (370 à 440 m).
   // Les canons se mettent en marche quand le joueur passe « depart » et soufflent pendant « duree » secondes :
   // un nuage de neige couvre l'écran et ne laisse voir qu'environ 30 % de la piste (« visible »).
   // canons : y = hauteur du canon (m), cote : -1 = bord gauche, 1 = bord droit.
   canonsANeige: {
-    depart: 262, duree: 6.5, visible: 0.3,
-    canons: [{ y: 272, cote: -1 }, { y: 292, cote: 1 }, { y: 312, cote: -1 }, { y: 332, cote: 1 }]
+    depart: 365, duree: 6.5, visible: 0.3,
+    canons: [{ y: 375, cote: -1 }, { y: 395, cote: 1 }, { y: 415, cote: -1 }, { y: 435, cote: 1 }]
   },
 
-  // V4 — Le biathlète (« Martin Fourcade ! »), vers 500 m, avant l'école de ski : il remonte la piste à
-  // contresens en pas de patineur. debut : hauteur d'où il part (m) ; depart : il se met en route quand le joueur
-  // passe cette hauteur ; vitesse : vitesse de montée (km/h) ; largeur : part de la demi-largeur de piste qu'il
-  // balaie en zigzag ; periode : durée d'un aller-retour d'un bord à l'autre (s).
-  biathlete: { debut: 522, depart: 420, vitesse: 11, largeur: 0.55, periode: 5.5 },
+  // V4.1 — Bosses isolées, cachées dans le nuage des canons à neige (pas de banderole).
+  // x : position en travers (-1 = bord gauche, 1 = bord droit). Mêmes règles de chute que les champs de bosses.
+  bossesIsolees: [
+    { y: 392, x: -0.30 },
+    { y: 418, x: 0.35 },
+    { y: 446, x: -0.6 }
+  ],
+
+  // V4 — Le biathlète (« Martin Fourcade ! »), vers 615 m (V4.1 : déplacé dans le long secteur sans obstacle, avant
+  // l'entrée du passage secret de la V5 vers 690 m) : il remonte la piste à contresens en pas de patineur. debut : hauteur d'où il part (m) ;
+  // depart : il se met en route quand le joueur passe cette hauteur ; vitesse : vitesse de montée (km/h) ;
+  // lateral : vitesse (km/h) à laquelle il se décale vers le joueur, tant qu'il est devant lui.
+  biathlete: { debut: 632, depart: 522, vitesse: 11, lateral: 11 },
 
   // V4 — Les Frères Lhuillier (« Les frères Lhuillier ! »), vers 1 000 m, juste après la sortie du futur passage
   // secret (V5) et avant le 2e champ de bosses. Deux frères en treillis sortent des sapins, un de chaque côté, et
@@ -69,17 +78,19 @@ window.PISTE_V1 = {
     freres: [{ y: 1008, cote: -1 }, { y: 1036, cote: 1 }]
   },
 
-  // V2 — « La soupe et les cailloux ! » : neige lourde (plus jaune) sur les 200 derniers mètres,
-  // avec des plaques de terre à contourner. x : position en travers (-1 = bord gauche, 1 = bord droit),
-  // r : taille de la plaque (m).
-  neigeLourde: { debut: 1300, fin: 1500 },
+  // V2 — « La soupe et les cailloux ! » : neige lourde (plus jaune) en bas de la piste, avec des plaques de terre
+  // à contourner. V4.1 : la zone commence plus bas (1 380 m au lieu de 1 300 m), avec 9 plaques au lieu de 7.
+  // x : position en travers (-1 = bord gauche, 1 = bord droit), r : taille de la plaque (m).
+  neigeLourde: { debut: 1380, fin: 1500 },
   plaquesDeTerre: [
-    { y: 1322, x: -0.55, r: 2.2 },
-    { y: 1346, x: 0.10,  r: 2.6 },
-    { y: 1370, x: -0.50, r: 2.3 },
-    { y: 1394, x: 0.45,  r: 2.2 },
-    { y: 1420, x: -0.20, r: 2.5 },
-    { y: 1446, x: 0.50,  r: 2.2 },
-    { y: 1468, x: -0.45, r: 2.0 }
+    { y: 1396, x: -0.50, r: 2.2 },
+    { y: 1408, x: 0.35,  r: 2.3 },
+    { y: 1420, x: -0.10, r: 2.4 },
+    { y: 1431, x: 0.60,  r: 2.0 },
+    { y: 1442, x: -0.55, r: 2.2 },
+    { y: 1454, x: 0.15,  r: 2.5 },
+    { y: 1466, x: -0.35, r: 2.1 },
+    { y: 1477, x: 0.50,  r: 2.2 },
+    { y: 1488, x: -0.15, r: 2.0 }
   ]
 };

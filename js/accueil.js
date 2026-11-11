@@ -1,4 +1,4 @@
-// Pas Très Pentu Ski Cup — page d'accueil (V3) : musique au premier toucher, bande du tire-fesses.
+// Pas Très Pentu Ski Cup — page d'accueil (V3) : son (vent, V4.1) au premier toucher, bande du tire-fesses.
 (() => {
   'use strict';
   const home = document.getElementById('screen-home');

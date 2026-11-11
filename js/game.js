@@ -31,7 +31,7 @@
     startY: -9, gateY: -6.5,
     stopRadius: 24, stopOffset: 32,
     skidDec: 45 * KMH,
-    bannerTime: 2, bannerCooldown: 5, splitShowTime: 3,
+    bannerTime: 2, bannerCooldown: 5, bannerLead: 1.5, splitShowTime: 3,
     // V2 : chasse-neige garés (taille en m, angle de biais)
     plowScale: 1.8,            // taille des chasse-neige (1 = taille réelle d'une dameuse moyenne)
     plowW: 3.4 * 1.8, plowL: 6.8 * 1.8, plowAngle: 28 * DEG, plowMargin: 0.3,
@@ -46,11 +46,11 @@
 
   // V3 : les trois paires de skis (vitesse max en schuss, vitesse min en chasse-neige, adhérence dans les virages)
   const SKIS = [
-    { id: 'rhea', nom: 'Tante Rhéa', devise: 'rustiques mais efficaces', max: 75, min: 5, grip: 1.3,
+    { id: 'rhea', nom: 'Les Tante Rhéa', devise: 'rustiques mais efficaces', max: 75, min: 5, grip: 1.3,
       look: { ski: '#b5793a', skiTip: '#7a4a1e' } },
-    { id: 'bec', nom: 'Madame Bec', devise: 'hors de prix mais plutôt polyvalents', max: 90, min: 10, grip: 1,
+    { id: 'bec', nom: 'Les Madame Bec', devise: 'hors de prix mais plutôt polyvalents', max: 90, min: 10, grip: 1,
       look: { ski: '#e53935', skiTip: '#ffca28' } },
-    { id: 'fourcade', nom: 'Père Fourcade', devise: 'le haut de gamme mais ils se méritent…', max: 100, min: 15, grip: 0.8,
+    { id: 'fourcade', nom: "Les Neige d'en Haut", devise: "le haut de gamme, pour ceux qu'ils en sont capables", max: 100, min: 15, grip: 0.8,
       // faute de carre : au-dessus de 40 km/h, relâcher puis redonner la même direction en moins de 0,5 s fait tomber
       carre: { vitesse: 40, delai: 0.5 },
       look: { ski: '#15171c', skiTip: '#00e5ff' } }
@@ -171,6 +171,10 @@
       for (let n = lanes; n < f.nombre; n++) add((hw) => -hw + margin + rnd() * (2 * hw - 2 * margin), false);
       bumps.push(...placed);
     }
+    // V4.1 : quelques bosses isolées, cachées dans le nuage des canons à neige
+    for (const b of P.bossesIsolees || []) {
+      bumps.push({ x: TRACK.center(b.y) + b.x * TRACK.halfW(b.y), y: b.y, r: CFG.bumpRadius, hit: false });
+    }
     bumps.sort((a, b) => a.y - b.y);
   })();
 
@@ -251,18 +255,27 @@
     return Math.max(0, Math.min(1, t / 1, (CANONS.C.duree - t) / 1.2));
   };
 
-  // V4 : le biathlète remonte la piste à contresens, en zigzag d'un bord à l'autre
+  // V4 : le biathlète remonte la piste à contresens. V4.1 : tant qu'il est devant le joueur (plus bas que lui),
+  // il se décale vers lui pour lui foncer dessus, à vitesse de côté limitée : on peut l'esquiver en tournant.
   const BIATH = (() => {
     const B = P.biathlete;
     if (!B) return null;
     return {
       B,
-      // position t secondes après sa mise en route ; ph : phase du pas de patineur
-      at(t) {
-        const y = B.debut - B.vitesse * KMH * t;
-        const hw = TRACK.halfW(y), ph = t * Math.PI * 2 * 0.75;
-        const x = TRACK.center(y) + Math.sin(t * Math.PI * 2 / B.periode + 0.7) * hw * B.largeur + Math.sin(ph) * 0.35;
-        return { x, y, ph };
+      // état de départ : bx = position en travers sans le balancement du pas ; ph : phase du pas de patineur
+      init() { return { t: 0, bx: TRACK.center(B.debut), x: TRACK.center(B.debut), y: B.debut, ph: 0 }; },
+      update(b, dt, px, py) {
+        b.t += dt;
+        b.y = B.debut - B.vitesse * KMH * b.t;
+        b.ph = b.t * Math.PI * 2 * 0.75;
+        const c = TRACK.center(b.y), hw = TRACK.halfW(b.y) - 1.2;
+        if (b.y > py) {
+          const aim = Math.max(c - hw, Math.min(c + hw, px));
+          const maxd = B.lateral * KMH * dt;
+          b.bx += Math.max(-maxd, Math.min(maxd, aim - b.bx));
+        }
+        b.bx = Math.max(c - hw, Math.min(c + hw, b.bx));
+        b.x = b.bx + Math.sin(b.ph) * 0.35;
       }
     };
   })();
@@ -273,7 +286,7 @@
     if (!L) return null;
     const freres = L.freres.map((f, i) => {
       const c = TRACK.center(f.y), hw = TRACK.halfW(f.y);
-      return { y: f.y, cote: f.cote, xIn: c + f.cote * (hw + 0.7), xOut: c + f.cote * (hw + 4), i };
+      return { y: f.y, cote: f.cote, xIn: c + f.cote * (hw + 0.4), xOut: c + f.cote * (hw + 4), i };
     });
     return { L, freres };
   })();
@@ -761,7 +774,7 @@
     endTimer: 0, fallT: 0, skidSide: 1, lift: 0,
     banner: null, bannerSeen: {}, splitMsg: null,
     particles: [], trail: [], lastTrailY: 0, gateOpen: 0, announced: {},
-    fogT: -1, biathT: 0, biathStep: 0, lhu: { t: -1, next: 0, n: 0, bags: [] }, coins: [], groundCoins: []
+    fogT: -1, bia: BIATH ? BIATH.init() : null, lhu: { t: -1, next: 0, n: 0, bags: [] }, coins: [], groundCoins: []
   };
 
   function resetRace() {
@@ -776,7 +789,7 @@
     S.camX = S.x; S.camY = S.y - viewH() * CFG.skierScreenFrac;
     S.lastBeep = null; S.heavy = false; S.turnAmt = 0; S.schoolT = 0; S.edgeT = 0; S.edgeDir = 0; S.edgeLast = 0;
     // V4 : canons à neige (fogT < 0 : pas encore en marche), biathlète, Frères Lhuillier
-    S.fogT = -1; S.biathT = 0; S.biathStep = 0;
+    S.fogT = -1; S.bia = BIATH ? BIATH.init() : null;
     S.lhu = { t: -1, next: 0, n: 0, bags: [] }; S.coins = []; S.groundCoins = [];
     S.ref = window.Famille ? Famille.reference() : null; // record de la famille au départ
     input.keys.clear(); input.touch = null;
@@ -792,6 +805,11 @@
     S.bannerSeen[text] = now;
     S.banner = { text, t0: now, style };
   }
+
+  const FALL_CAUSES = {
+    arbre: 'Dans les sapins', bosse: 'Sur une bosse', engin: 'Contre un chasse-neige', ecole: "Dans l'école de ski",
+    terre: 'Sur une plaque de terre', carre: 'Faute de carre', biathlete: 'Contre le biathlète', lhuillier: "Sous un sac de pièces d'or"
+  };
 
   function fall(reason) {
     if (S.mode !== 'race') return;
@@ -852,7 +870,13 @@
       S.v = Math.max(0, S.v - 18 * dt);
       S.y += S.v * Math.cos(S.th) * dt;
       S.x += S.v * Math.sin(S.th) * dt;
-      if (S.fallT > 1.4 && !S.endShown) { S.endShown = true; showScreen('fall'); }
+      if (S.fallT > 1.4 && !S.endShown) {
+        S.endShown = true;
+        // V4.1 : cause de la chute et paire de skis utilisée
+        const el = document.getElementById('fall-info');
+        if (el) el.textContent = `${FALL_CAUSES[S.fallReason] || 'Chute'} · ${ski.nom}`;
+        showScreen('fall');
+      }
     }
 
     // particules
@@ -872,8 +896,10 @@
     S.camX += (target - S.camX) * k;
     S.camY = ty;
 
-    // banderole quand un champ de bosses entre par le bas
-    const bottom = S.camY + viewH();
+    // banderole d'annonce : V4.1, elle arrive environ 1,5 s avant que l'obstacle entre dans l'écran par le bas
+    // (et pas au moment où il entre), pour qu'on ait le temps de la lire avant de l'aborder
+    const lead = Math.max(12, S.v * CFG.bannerLead);
+    const bottom = S.camY + viewH() + lead;
     for (const f of P.champsDeBosses) {
       if (!S.announced[f.debut] && bottom >= f.debut - 1 && S.y < f.debut + f.longueur && (S.mode === 'race' || S.mode === 'countdown')) {
         S.announced[f.debut] = true;
@@ -888,10 +914,11 @@
     if (S.mode === 'race' || S.mode === 'countdown') {
       if (CANONS && !S.announced.canons && bottom >= CANONS.top - 1 && S.y < CANONS.bot) { S.announced.canons = true; showBanner('Canons à neige !'); }
       if (BIATH && !S.announced.biath) {
-        const b = BIATH.at(S.biathT);
-        if (bottom >= b.y - 1 && S.y < b.y) { S.announced.biath = true; showBanner('Martin Fourcade !'); }
+        // il vient vers nous : on compte aussi sa propre vitesse
+        const b = S.bia;
+        if (bottom + BIATH.B.vitesse * KMH * CFG.bannerLead >= b.y - 1 && S.y < b.y) { S.announced.biath = true; showBanner('Martin Fourcade !'); }
       }
-      if (LHU && !S.announced.lhu && S.lhu.t >= 0) { S.announced.lhu = true; showBanner('Les frères Lhuillier !'); }
+      if (LHU && !S.announced.lhu && bottom >= LHU.freres[0].y - 1 && S.y < LHU.L.fin) { S.announced.lhu = true; showBanner('Les frères Lhuillier !'); }
     }
     if (HEAVY && !S.announced.heavy && bottom >= HEAVY.debut - 1 && S.y < HEAVY.fin && (S.mode === 'race' || S.mode === 'countdown')) {
       S.announced.heavy = true;
@@ -929,9 +956,8 @@
     }
     // biathlète : il se met en route quand le joueur passe « depart » ; un pas de patineur à chaque demi-tour
     if (BIATH && S.y >= BIATH.B.depart) {
-      const prev = BIATH.at(S.biathT).ph;
-      S.biathT += dt;
-      const b = BIATH.at(S.biathT);
+      const b = S.bia, prev = b.ph;
+      BIATH.update(b, dt, S.x, S.y);
       if (Math.floor(b.ph / Math.PI) > Math.floor(prev / Math.PI) && window.Sons && Sons.on.pas) {
         const vol = nearness(b.y), n = Math.floor(b.ph / Math.PI);
         if (vol > 0) { Sons.on.pas(vol, panOf(b.x)); if (n % 2 === 0) Sons.on.souffle(vol, panOf(b.x)); }
@@ -1001,8 +1027,8 @@
     const d = target - S.th;
     const dth = Math.sign(d) * Math.min(Math.abs(d), omega * dt);
     S.th += dth;
-    // Père Fourcade : relâcher puis redonner la même direction trop vite = faute de carre
-    if (ski.carre) {
+    // Les Neige d'en Haut (id « fourcade ») : relâcher puis redonner la même direction trop vite = faute de carre
+    if (ski.carre && ski.id === 'fourcade') {
       const C = ski.carre;
       const dir = Math.abs(input.steer) > 0.35 ? Math.sign(input.steer) : (Math.abs(input.steer) < 0.15 ? 0 : S.edgeDir);
       if (dir === 0 && S.edgeDir !== 0) { S.edgeLast = S.edgeDir; S.edgeT = 0; }
@@ -1107,7 +1133,7 @@
 
     // V4 : biathlète qui remonte la piste : le toucher fait tomber
     if (BIATH) {
-      const b = BIATH.at(S.biathT);
+      const b = S.bia;
       if (Math.abs(b.y - S.y) < 1.1 && Math.abs(b.x - S.x) < 1.35) { fall('biathlete'); return; }
     }
 
@@ -1334,7 +1360,7 @@
       for (const c of CANONS.list) if (c.y > yTop - 6 && c.y < yBot + 6) items.push({ y: c.y, draw: () => drawCanon(c, on) });
     }
     if (v4 && BIATH) {
-      const b = BIATH.at(S.biathT);
+      const b = S.bia;
       if (b.y > yTop - 6 && b.y < yBot + 6) items.push({ y: b.y, draw: () => drawBiathlete(ctx, wx(b.x), wy(b.y), 52, b.ph) });
     }
     if (v4 && LHU) {
@@ -1343,7 +1369,7 @@
         if (f.y < yTop - 6 || f.y > yBot + 6) continue;
         const x = f.xOut + (f.xIn - f.xOut) * prog;
         const throwing = f.throwT !== undefined && S.lhu.t >= 0 && S.lhu.t - f.throwT < 0.3;
-        items.push({ y: f.y, draw: () => drawBrother(wx(x), wy(f.y), 50, f.cote, throwing) });
+        items.push({ y: f.y + 3, draw: () => drawBrother(wx(x), wy(f.y), 50, f.cote, throwing) });
       }
     }
     items.push({ y: S.y, draw: drawPlayer });
@@ -1610,21 +1636,9 @@
     g.fillStyle = YEL;
     g.beginPath(); g.moveTo(-8 * u, shY); g.lineTo(-5 * u, shY); g.lineTo(-4.4 * u, hipY + 1 * u); g.lineTo(-6.2 * u, hipY + 1 * u); g.closePath(); g.fill();
     g.beginPath(); g.moveTo(8 * u, shY); g.lineTo(5 * u, shY); g.lineTo(4.4 * u, hipY + 1 * u); g.lineTo(6.2 * u, hipY + 1 * u); g.closePath(); g.fill();
-    // carabine dans le dos, en travers, avec ses bretelles
+    // bretelles de la carabine
     g.strokeStyle = '#3a3f47'; g.lineWidth = 1 * u;
     line(-6 * u, shY + 0.5 * u, -2 * u, hipY + 1 * u); line(6 * u, shY + 0.5 * u, 2 * u, hipY + 1 * u);
-    g.save();
-    g.translate(0, (shY + hipY) / 2);
-    g.rotate(-0.55);
-    g.fillStyle = OUT;
-    roundRect(g, -12 * u, -1.6 * u, 24 * u, 3.2 * u, 1 * u); g.fill();
-    g.fillStyle = '#4e342e';
-    roundRect(g, -11.4 * u, -2.2 * u, 9 * u, 4.4 * u, 1.4 * u); g.fill();
-    g.fillStyle = '#607d8b';
-    g.fillRect(-2.4 * u, -1 * u, 13.6 * u, 2 * u);
-    g.fillStyle = '#263238';
-    g.fillRect(1 * u, 0.8 * u, 2.4 * u, 2.4 * u);
-    g.restore();
     // tête vue de dos : bonnet noir à bande jaune
     const hy = shY - 7.5 * u;
     g.fillStyle = '#c8996c';
@@ -1641,6 +1655,25 @@
     g.fillRect(-5.8 * u, hy - 0.6 * u, 11.6 * u, 2.2 * u);
     g.fillStyle = YEL;
     g.fillRect(-5.8 * u, hy - 2.4 * u, 11.6 * u, 1.6 * u);
+    // carabine dans le dos (V4.1 : plus grande et plus contrastée) : crosse en bois clair près de la hanche gauche,
+    // canon gris clair qui dépasse au-dessus de l'épaule droite, avec un liseré blanc pour ressortir sur le noir
+    g.save();
+    g.translate(1 * u, (shY + hipY) / 2 - 2 * u);
+    g.rotate(-1.0);
+    g.fillStyle = '#ffffff';
+    roundRect(g, -17 * u, -3.3 * u, 13 * u, 6.6 * u, 2 * u); g.fill();
+    roundRect(g, -5 * u, -2.1 * u, 26.5 * u, 4.2 * u, 1.2 * u); g.fill();
+    g.fillStyle = '#c47a3a';
+    roundRect(g, -16.2 * u, -2.5 * u, 11.6 * u, 5 * u, 1.6 * u); g.fill();
+    g.fillStyle = '#8d5524';
+    g.fillRect(-15 * u, -0.4 * u, 9 * u, 0.9 * u);
+    g.fillStyle = '#b0bec5';
+    g.fillRect(-4.5 * u, -1.3 * u, 25.3 * u, 2.6 * u);
+    g.fillStyle = '#263238';
+    g.fillRect(-5 * u, -1.8 * u, 7 * u, 3.6 * u);
+    g.fillRect(-1 * u, 1.6 * u, 2.6 * u, 3.4 * u);
+    g.fillRect(18.5 * u, -2 * u, 1.6 * u, 4 * u);
+    g.restore();
     // il souffle fort : petit nuage de buée à chaque pas
     const br = ((ph % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
     if (br < 1.6) {
@@ -1704,7 +1737,9 @@
     g.fillStyle = '#111';
     g.beginPath(); g.arc(-2 * u, hyy + 0.5 * u, 0.8 * u, 0, Math.PI * 2); g.arc(2 * u, hyy + 0.5 * u, 0.8 * u, 0, Math.PI * 2); g.fill();
     g.strokeStyle = '#4a2e1a'; g.lineWidth = 1 * u;
-    g.beginPath(); g.moveTo(-2.4 * u, hyy + 3 * u); g.quadraticCurveTo(0, hyy + 5 * u, 2.4 * u, hyy + 3 * u); g.stroke();
+    // visage fermé de soldat : bouche droite, sourcils froncés
+    g.beginPath(); g.moveTo(-2 * u, hyy + 3.9 * u); g.lineTo(2 * u, hyy + 3.9 * u); g.stroke();
+    g.beginPath(); g.moveTo(-3.2 * u, hyy - 1.6 * u); g.lineTo(-0.9 * u, hyy - 0.7 * u); g.moveTo(3.2 * u, hyy - 1.6 * u); g.lineTo(0.9 * u, hyy - 0.7 * u); g.stroke();
     g.fillStyle = '#3b2a1a';
     g.fillRect(-2.6 * u, hyy + 2.2 * u, 5.2 * u, 0.9 * u); // moustache
     g.fillStyle = C2;
@@ -2138,7 +2173,7 @@
       row('Vitesse', (ski.max - 60) / 45, `${ski.max} km/h en schuss`) +
       row('Freinage', (20 - ski.min) / 17, `chasse-neige jusqu'à ${ski.min} km/h`) +
       row('Virages', (ski.grip - 0.6) / 0.8, grip ? `adhérence ${grip > 0 ? '+' : '−'}${Math.abs(grip)} %` : 'adhérence de référence') +
-      (ski.carre ? `<span class="ski-model carre-text">⚠ Au-dessus de ${ski.carre.vitesse} km/h, relâcher puis redonner la même direction trop vite : faute de carre !</span>` : '');
+      ''; // V4.1 : la faute de carre n'est plus annoncée, c'est au joueur de la découvrir
   }
 
   function openSkis() {
