@@ -1,4 +1,5 @@
-// Pas Très Pentu Ski Cup — bruitages (V2, V4) et vent de la page d'accueil (V4.1, remplace la musique de la V3)
+// Pas Très Pentu Ski Cup — bruitages (V2, V4), vent de la page d'accueil (V4.1, remplace la musique de la V3)
+// et ovation de l'arrivée (V5, voir js/ovation.js : elle remplace les cloches et la foule de la V2)
 // Tous les sons sont fabriqués par le jeu avec Web Audio : aucun fichier à télécharger (0 Ko).
 // La glisse suit la vitesse et devient plus forte dans les virages et en chasse-neige ; cloches et foule sont jouées en fond.
 window.Sons = (() => {
@@ -36,6 +37,7 @@ window.Sons = (() => {
       master.connect(comp); comp.connect(ac.destination);
       noise = makeNoise(2);
       buildLoops();
+      prepareOvation();
     }
     wake();
     if (wantMusic) startMusic();
@@ -350,12 +352,51 @@ window.Sons = (() => {
     if (wantMusic) startMusic(); else stopMusic();
   }
 
+  // ---------- V5 : ovation de l'arrivée ----------
+  // Calculée une fois en arrière-plan (worker) dès que le son est débloqué, puis rejouée à chaque arrivée.
+  let ovation = null, ovationSrc = null;
+  function prepareOvation() {
+    if (ovation || !window.PTPSC_buildOvation) return;
+    const sr = ac.sampleRate, ctx = ac;
+    const done = (L, R) => {
+      if (ctx !== ac) return; // le contexte audio a été refait entre-temps
+      const b = ac.createBuffer(2, L.length, sr);
+      b.getChannelData(0).set(L); b.getChannelData(1).set(R);
+      ovation = b;
+    };
+    const direct = () => setTimeout(() => { const o = window.PTPSC_buildOvation(sr); done(o.L, o.R); }, 50);
+    try {
+      const code = 'self.window = self;\nconst build = ' + window.PTPSC_buildOvation.toString() + ';\n' +
+        'self.onmessage = (e) => { const o = build(e.data); self.postMessage(o, [o.L.buffer, o.R.buffer]); };';
+      const url = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
+      const w = new Worker(url);
+      w.onmessage = (e) => { done(e.data.L, e.data.R); w.terminate(); URL.revokeObjectURL(url); };
+      w.onerror = () => { w.terminate(); URL.revokeObjectURL(url); direct(); };
+      w.postMessage(sr);
+    } catch (e) { direct(); }
+  }
+  function playOvation() {
+    stopOvation();
+    const s = ac.createBufferSource(); s.buffer = ovation;
+    const g = ac.createGain(); g.gain.value = 0.85;
+    s.connect(g); g.connect(master);
+    s.start(ac.currentTime + 0.03);
+    ovationSrc = { s, g };
+  }
+  function stopOvation() {
+    if (!ovationSrc) return;
+    const o = ovationSrc; ovationSrc = null;
+    o.g.gain.setTargetAtTime(0, ac.currentTime, 0.15);
+    setTimeout(() => { try { o.s.stop(); } catch (e) { /* déjà fini */ } }, 800);
+  }
+
   // ---------- Événements du jeu ----------
   const on = {
     countdown(n) { beep(n === 0); },
     start() {
       music(false);
       if (!ac) return;
+      stopOvation();
       ramp(crowd.g.gain, 0, 0.3); // pas de murmure de foule pendant la descente
     },
     // V4 : pas de patineur du biathlète (la carre qui pousse et glisse sur la neige)
@@ -381,6 +422,26 @@ window.Sons = (() => {
       const p = panner(pan);
       s.connect(bp); bp.connect(g); g.connect(p); p.connect(master);
       s.start(t, Math.random()); s.stop(t + 0.55);
+    },
+    // V5 : saut sur le ressaut du passage secret (souffle de l'air) puis réception dans la neige
+    saut() {
+      if (!ac) return;
+      const t = ac.currentTime + 0.01;
+      const s = noiseSource();
+      const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.5;
+      bp.frequency.setValueAtTime(700, t); bp.frequency.exponentialRampToValueAtTime(1600, t + 0.6);
+      const g = ac.createGain(); env(g, t, 0.15, 0.12, 0.55);
+      s.connect(bp); bp.connect(g); g.connect(master);
+      s.start(t, Math.random()); s.stop(t + 0.8);
+    },
+    atterrissage() {
+      if (!ac) return;
+      const t = ac.currentTime + 0.01;
+      const s = noiseSource();
+      const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(1200, t); lp.frequency.exponentialRampToValueAtTime(200, t + 0.3);
+      const g = ac.createGain(); env(g, t, 0.005, 0.35, 0.3);
+      s.connect(lp); lp.connect(g); g.connect(master);
+      s.start(t, Math.random()); s.stop(t + 0.4);
     },
     // V4 : un sac lancé par les Frères Lhuillier (« fiouuu »)
     lancer(pan) {
@@ -438,14 +499,16 @@ window.Sons = (() => {
     },
     finish() {
       if (!ac) return;
+      // V5 : ovation réaliste (applaudissements, cris de joie, sifflets), sans cloches
+      if (ovation) { playOvation(); return; }
+      // (si elle n'est pas encore prête : l'ancienne ovation de synthèse, sans les cloches)
       const t = ac.currentTime;
-      // ovation : gros brouhaha, applaudissements nourris et cloches à toute volée
       ramp(crowd.g.gain, 0.5, 0.15);
       setTimeout(() => { if (ac && crowd) ramp(crowd.g.gain, 0, 1.5); }, 6000);
       crowdVoice(t + 0.05, 'a', 2.2, 0.3, false);
       crowdVoice(t + 1.8, 'a', 2.0, 0.22, false);
       crowdVoice(t + 3.6, 'a', 2.0, 0.16, false);
-      cheer = { t0: t, until: t + 7 };
+      cheer = { t0: t, until: t + 7, noBells: true };
       bellTimer = 0;
       for (let i = 0; i < 7; i++) whistle(t + 0.2 + Math.random() * 4);
     },
@@ -459,6 +522,7 @@ window.Sons = (() => {
       if (!ac) return;
       ramp(crowd.g.gain, 0, 0.4); ramp(glide.g.gain, 0, 0.1); ramp(canon.g.gain, 0, 0.1);
       cheer = null;
+      stopOvation();
     }
   };
 
@@ -495,7 +559,7 @@ window.Sons = (() => {
           n -= 1;
         }
         bellTimer -= dt;
-        if (bellTimer <= 0) { bellBurst(4 * (0.3 + 0.7 * fade)); bellTimer = (0.08 + Math.random() * 0.15) / Math.max(0.3, fade); }
+        if (bellTimer <= 0 && !cheer.noBells) { bellBurst(4 * (0.3 + 0.7 * fade)); bellTimer = (0.08 + Math.random() * 0.15) / Math.max(0.3, fade); }
       }
     }
   }
@@ -509,6 +573,7 @@ window.Sons = (() => {
 
   return {
     unlock, update, on, supported, music,
+    ovationReady: () => !!ovation,
     isMuted: () => muted,
     // vrai quand le navigateur laisse vraiment sortir le son
     running: () => !!ac && ac.state === 'running',

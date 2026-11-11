@@ -1,4 +1,4 @@
-// Pas Très Pentu Ski Cup — fichier de tronçons de la piste (V4).
+// Pas Très Pentu Ski Cup — fichier de tronçons de la piste (V5).
 // La même piste pour tout le monde, pour que les chronos soient comparables.
 // Distances en mètres de descente depuis la ligne de départ.
 // angle : 0 = droit dans la pente ; positif = diagonale vers la droite, négatif = vers la gauche.
@@ -76,6 +76,28 @@ window.PISTE_V1 = {
   lhuillier: {
     depart: 955, debut: 975, fin: 1068, preavis: 1, rayon: 1.6, intervalle: 0.8,
     freres: [{ y: 1008, cote: -1 }, { y: 1036, cote: 1 }]
+  },
+
+  // V5 — Passage secret : un raccourci caché dans les sapins du bord gauche, juste avant le secteur en diagonale
+  // (700 m), après le biathlète. Un vieux panneau en bois à moitié enfoui dans la neige l'indique (« panneau »).
+  // Entre « entree » et « finEntree », les sapins du bord gauche laissent passer le skieur qui s'y jette exprès :
+  // le couloir apparaît alors. Il est étroit (« largeur », en m), descend en zigzag dans la forêt et rejoint la piste
+  // principale vers 910 m (V5 : parcours raccourci, qui finit par une grande diagonale vers la droite), en évitant
+  // l'école de ski et le secteur en diagonale qui la suit (mais pas les Frères
+  // Lhuillier). Juste avant de rejoindre la piste, un petit ressaut naturel (« ressaut ») fait sauter le skieur.
+  // troncons : même principe que la piste (angle positif = vers la droite), en partant du bord gauche à « entree ».
+  passageSecret: {
+    // (V5 : zone d'entrée de 668 à 692 m, qui commence au panneau)
+    panneau: 668, entree: 668, finEntree: 692, largeur: 7, recouvrement: 2.6, ressaut: 908,
+    troncons: [
+      { longueur: 28, angle: 0 },     // entrée, le long de la piste
+      { longueur: 24, angle: -32 },
+      { longueur: 26, angle: 32 },
+      { longueur: 26, angle: -32 },
+      { longueur: 26, angle: 32 },
+      { longueur: 26, angle: -32 },
+      { longueur: 160, angle: 30 }    // V5 : grande diagonale vers la droite, qui rejoint la piste principale
+    ]
   },
 
   // V2 — « La soupe et les cailloux ! » : neige lourde (plus jaune) en bas de la piste, avec des plaques de terre

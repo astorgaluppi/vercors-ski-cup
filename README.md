@@ -1,4 +1,4 @@
-# Pas Très Pentu Ski Cup — V4
+# Pas Très Pentu Ski Cup — V5
 
 Petit jeu de ski en famille, jouable dans le navigateur d'un téléphone (portrait) ou d'un ordinateur.
 
@@ -18,7 +18,7 @@ Nouveautés de la V2 :
   est envoyé à la descente suivante.
 - **Bruitages**, tous fabriqués par le jeu (0 Ko de fichiers son) : glisse douce de poudreuse qui suit la vitesse,
   plus forte dans les virages et en chasse-neige, bips du compte à rebours, bip de recul des chasse-neige,
-  ovation à l'arrivée (applaudissements, brouhaha et cloches de vache), chute avec le « Oh ! » de la foule. Bouton 🔊 pour couper le son.
+  ovation à l'arrivée (V5 : applaudissements, cris de joie et sifflets, sans cloches), chute avec le « Oh ! » de la foule. Bouton 🔊 pour couper le son.
 - **Obstacles** : deux chasse-neige garés en chicane très large au départ (échauffement), et
   « La soupe et les cailloux ! » sur les 120 derniers mètres depuis la V4.1 (9 plaques) : neige lourde un peu jaune (virages plus larges,
   vitesse un peu plus basse) et plaques de terre à contourner.
@@ -53,14 +53,27 @@ Nouveautés de la V4 : les derniers obstacles
 - V4.1 : les banderoles d'annonce arrivent environ 1,5 s avant que l'obstacle entre dans l'écran.
 - Rappel V3.4 : 2e champ de bosses à 1 100 m ; Les Neige d'en Haut (ex-Père Fourcade) avec la faute de carre « Rebond », qui n'est plus annoncée sur l'écran de choix (V4.1).
 
+Nouveautés de la V5 :
+- **Passage secret** : un vieux panneau en bois à moitié enfoui, vers 668 m au bord gauche, pointe vers la forêt.
+  En se jetant dans les sapins entre 668 et 692 m, le couloir apparaît aussitôt (banderole « Hors-piste ! »),
+  avec une entrée en entonnoir. Ce couloir étroit descend en zigzag, puis en grande diagonale vers la droite, et
+  rejoint la piste vers 910 m : il évite l'école de ski, pas les Frères Lhuillier. Juste avant la sortie, un ressaut
+  fait sauter le skieur, skis écartés, avec une bulle « Yeehaa ! ».
+- **Page d'accueil** : une forêt de sapins en perspective (petits et gris-bleu au loin, grands et verts devant) remplace
+  l'ombre chinoise du Vercors, sur un fond bleu uni ; plus de tire-fesses ; logo plus large ; le podium devient trois
+  médailles à ruban (or, argent, bronze) de tailles décroissantes ; plus de rouge.
+- **Boutons** : « Jouer », « C'est parti ! », « Rejouer » et les barres du choix des skis sont tous du même bleu.
+- **Arrivée** : les cloches et la foule de synthèse sont remplacées par une ovation plus réaliste (environ 7 s).
+
 ## Fichiers
 - `index.html` : la page et les écrans
 - `js/config.js` : adresse et clé publique de la base des scores (Supabase)
 - `js/piste.js` : le fichier de tronçons (tracé de la piste, champs de bosses, chasse-neige, canons à neige, biathlète, école de ski, Frères Lhuillier, plaques de terre)
 - `js/game.js` : le jeu (physique, dessins, commandes) ; réglages en haut du fichier (`CFG`)
 - `js/sons.js` : les bruitages (Web Audio)
+- `js/ovation.js` : l'ovation de l'arrivée (V5), calculée par le jeu en arrière-plan
 - `js/famille.js` : prénom, code famille, classement et podium
-- `js/accueil.js` : page d'accueil (son du vent au premier toucher, bande du tire-fesses)
+- `js/accueil.js` : page d'accueil (son du vent au premier toucher, forêt de sapins dessinée en V5)
 - `img/logo-titre.png` : le logo (fond rendu transparent)
 - `supabase/scores.sql` : script à lancer une fois dans Supabase (SQL Editor) pour créer la base des scores
 - `supabase/v3-skis.sql` : mise à jour V3 de la base (enregistre la paire de skis du record), sans rien effacer

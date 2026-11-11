@@ -1,4 +1,4 @@
-// Pas Très Pentu Ski Cup — page d'accueil (V3) : son (vent, V4.1) au premier toucher, bande du tire-fesses.
+// Pas Très Pentu Ski Cup — page d'accueil (V3) : son (vent, V4.1) au premier toucher ; forêt de sapins (V5).
 (() => {
   'use strict';
   const home = document.getElementById('screen-home');
@@ -24,97 +24,84 @@
     refresh();
   }
 
-  // ---------- Bande du tire-fesses (écrans larges seulement) ----------
-  // Le skieur reste en place, accroché à sa perche ; le paysage défile vers le bas.
-  const c = document.getElementById('tirefesses');
-  if (!c) return;
+  // ---------- V5 : forêt de sapins en perspective (remplace l'ombre chinoise du Vercors et le tire-fesses) ----------
+  // Elle commence sous la ligne de crêtes du logo et descend jusqu'au bas de l'écran : petits sapins gris-bleu
+  // au loin, en haut, puis de plus en plus grands et verts vers le bas.
+  const c = document.getElementById('foret');
+  const logo = home.querySelector('.logo');
+  if (!c || !logo) return;
   const g = c.getContext('2d');
-  let w = 0, h = 0, dpr = 1, last = performance.now(), scroll = 0;
-  const SPEED = 38; // pixels par seconde
-
-  function size() {
-    dpr = Math.min(2, window.devicePixelRatio || 1);
-    w = c.clientWidth; h = c.clientHeight;
-    c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
-  }
   const hash = (n) => { const s = Math.sin(n * 91.7 + 13.3) * 43758.5453; return s - Math.floor(s); };
+  const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+  const rgb = (a) => `rgb(${a[0]},${a[1]},${a[2]})`;
+  // couleurs du feuillage (clair, ombre) et de la neige au sol, du plus lointain au plus proche
+  const FAR = { leaf: [150, 172, 198], shade: [132, 155, 184], snow: [213, 230, 248] };
+  const MID = { leaf: [74, 122, 128], shade: [58, 104, 112], snow: [228, 237, 247] };
+  const NEAR = { leaf: [31, 94, 58], shade: [22, 74, 45], snow: [244, 248, 253] };
+  const colorAt = (d, key) => d < 0.5 ? mix(FAR[key], MID[key], d / 0.5) : mix(MID[key], NEAR[key], (d - 0.5) / 0.5);
 
-  function tree(x, y, s) {
-    g.fillStyle = 'rgba(60,90,140,0.18)';
-    g.beginPath(); g.ellipse(x + 4 * s, y + 2 * s, 12 * s, 4 * s, 0, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#6b4a2b'; g.fillRect(x - 2 * s, y - 5 * s, 4 * s, 6 * s);
-    const layers = [[0, 15, 12], [-10, 12, 11], [-19, 9, 10]];
-    for (const [dy, hw, hh] of layers) {
-      g.fillStyle = '#1f5b3a';
-      g.beginPath(); g.moveTo(x, y - 5 * s + dy * s - hh * s); g.lineTo(x + hw * s, y - 5 * s + dy * s); g.lineTo(x - hw * s, y - 5 * s + dy * s); g.closePath(); g.fill();
-      g.fillStyle = '#fff';
-      g.beginPath(); g.moveTo(x, y - 5 * s + dy * s - hh * s); g.lineTo(x + hw * 0.35 * s, y - 5 * s + dy * s - hh * 0.55 * s); g.lineTo(x - hw * 0.35 * s, y - 5 * s + dy * s - hh * 0.55 * s); g.closePath(); g.fill();
+  function tree(x, base, h, d, k) {
+    const w = h * 0.62, leaf = rgb(colorAt(d, 'leaf')), shade = rgb(colorAt(d, 'shade'));
+    const snowA = 0.35 + d * 0.6;
+    if (d > 0.35) { g.fillStyle = `rgba(90,110,140,${0.12 * d})`; g.beginPath(); g.ellipse(x + w * 0.15, base, w * 0.45, h * 0.06, 0, 0, Math.PI * 2); g.fill(); }
+    g.fillStyle = rgb(mix([150, 160, 175], [109, 76, 47], d));
+    g.fillRect(x - w * 0.06, base - h * 0.14, w * 0.12, h * 0.14);
+    for (let i = 0; i < 3; i++) {
+      const yb = base - h * 0.1 - i * h * 0.25, yt = yb - h * 0.45, hw = w * (0.5 - i * 0.12) * (0.92 + hash(k + i) * 0.16);
+      g.fillStyle = leaf;
+      g.beginPath(); g.moveTo(x, yt); g.lineTo(x + hw, yb); g.lineTo(x - hw, yb); g.closePath(); g.fill();
+      g.fillStyle = shade;
+      g.beginPath(); g.moveTo(x, yt); g.lineTo(x + hw, yb); g.lineTo(x + hw * 0.15, yb); g.closePath(); g.fill();
+      // neige sur les branches
+      g.fillStyle = `rgba(248,251,255,${snowA})`;
+      g.beginPath(); g.moveTo(x - hw * 0.95, yb);
+      g.quadraticCurveTo(x - hw * 0.5, yb - h * 0.08, x, yb - h * 0.02);
+      g.quadraticCurveTo(x + hw * 0.5, yb - h * 0.08, x + hw * 0.95, yb);
+      g.closePath(); g.fill();
     }
   }
 
-  function draw(now) {
-    requestAnimationFrame(draw);
-    const dt = Math.min(0.1, (now - last) / 1000); last = now;
-    if (!document.body.classList.contains('accueil') || getComputedStyle(c).display === 'none') return;
-    if (c.clientWidth !== w || c.clientHeight !== h) size();
-    scroll += SPEED * dt;
+  function draw() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = c.clientWidth, h = c.clientHeight;
+    if (!w || !h) return;
+    c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    // neige et piste de la remontée
-    g.fillStyle = '#e4edf7'; g.fillRect(0, 0, w, h);
-    g.fillStyle = '#f6f9fd'; g.fillRect(w * 0.2, 0, w * 0.6, h);
-    // traces de la remontée (deux sillons sous les skis)
-    const upX = w * 0.42, downX = w * 0.68;
-    g.strokeStyle = 'rgba(140,165,200,0.45)'; g.lineWidth = 1.4;
-    for (const dx of [-5, 5]) { g.beginPath(); g.moveTo(upX + dx, 0); g.lineTo(upX + dx, h); g.stroke(); }
-    // sapins des bords, qui défilent vers le bas
-    const gap = 46;
-    for (let k = Math.floor(-scroll / gap) - 1; k * gap + scroll < h + 40; k++) {
-      const y = k * gap + scroll;
-      tree(w * 0.1 + hash(k) * 8, y, 0.8 + hash(k + 3) * 0.2);
-      tree(w * 0.92 - hash(k + 7) * 8, y + 20, 0.8 + hash(k + 5) * 0.2);
+    g.clearRect(0, 0, w, h);
+    // haut de la forêt : sous la ligne de crêtes du logo (vers le milieu de l'image)
+    const hr = home.getBoundingClientRect(), lr = logo.getBoundingClientRect();
+    const top = Math.max(40, lr.top - hr.top + lr.height * 0.7);
+    // neige du sous-bois, plus claire vers le bas
+    const sg = g.createLinearGradient(0, top - 10, 0, h);
+    // (V5 : même bleu que le fond du haut de l'écran, pour qu'il n'y ait aucune cassure)
+    sg.addColorStop(0, 'rgb(213,230,248)'); sg.addColorStop(1, 'rgb(244,248,253)');
+    g.fillStyle = sg; g.fillRect(0, top - 10, w, h - top + 10);
+    // rangées de sapins, des plus lointaines (petites) aux plus proches (grandes)
+    let y = top, row = 0;
+    while (y < h + 80) {
+      const d = Math.min(1, Math.max(0, (y - top) / Math.max(1, h - top)));
+      const th = 10 + Math.pow(d, 1.6) * 120;            // hauteur des sapins de la rangée (px)
+      const gap = th * (0.75 + hash(row * 3.3) * 0.2);   // écart entre deux sapins de la rangée
+      let x = -hash(row * 7.1) * gap;
+      let k = row * 100;
+      while (x < w + gap) {
+        k++;
+        if (hash(k * 1.3) > 0.3) tree(x + (hash(k) - 0.5) * gap * 0.5, y + (hash(k * 2.7) - 0.5) * th * 0.12, th * (0.85 + hash(k * 4.1) * 0.3), d, k);
+        x += gap * (0.8 + hash(k * 5.9) * 0.4);
+      }
+      y += Math.max(5, th * 0.3);
+      row++;
     }
-    // pylônes de la remontée, tous les 260 px
-    const pyl = 260;
-    for (let k = Math.floor(-scroll / pyl) - 1; k * pyl + scroll < h + 60; k++) {
-      const y = k * pyl + scroll + 40;
-      g.fillStyle = 'rgba(60,90,140,0.2)'; g.beginPath(); g.ellipse((upX + downX) / 2 + 6, y + 4, 26, 5, 0, 0, Math.PI * 2); g.fill();
-      g.strokeStyle = '#5d6b7d'; g.lineWidth = 4;
-      g.beginPath(); g.moveTo((upX + downX) / 2, y); g.lineTo((upX + downX) / 2, y - 30); g.stroke();
-      g.lineWidth = 3; g.beginPath(); g.moveTo(upX - 4, y - 30); g.lineTo(downX + 4, y - 30); g.stroke();
-    }
-    // câbles
-    g.strokeStyle = '#3b4655'; g.lineWidth = 1.5;
-    for (const x of [upX, downX]) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
-    // perches vides qui redescendent (elles défilent deux fois plus vite)
-    const per = 120;
-    const down = scroll * 2;
-    for (let k = Math.floor(-down / per) - 1; k * per + down < h + 40; k++) {
-      const y = k * per + down;
-      g.strokeStyle = '#7d8896'; g.lineWidth = 2;
-      g.beginPath(); g.moveTo(downX, y); g.lineTo(downX, y + 26); g.stroke();
-      g.lineWidth = 3; g.beginPath(); g.moveTo(downX - 7, y + 26); g.lineTo(downX + 7, y + 26); g.stroke();
-    }
-    // perches qui montent avec le skieur (immobiles à l'écran), et le skieur
-    const sy = h * 0.6;
-    for (let k = -6; k <= 6; k++) {
-      const y = sy + k * per;
-      if (y < -40 || y > h + 40) continue;
-      g.strokeStyle = '#7d8896'; g.lineWidth = 2;
-      g.beginPath(); g.moveTo(upX, y - 34); g.lineTo(upX, y - 8); g.stroke();
-      g.lineWidth = 3; g.beginPath(); g.moveTo(upX - 7, y - 8); g.lineTo(upX + 7, y - 8); g.stroke();
-    }
-    if (window.PTPSC && PTPSC.drawSkier) {
-      const t = now / 1000;
-      PTPSC.drawSkier(g, upX, sy + 22, 54, { theta: Math.sin(t * 1.3) * 0.03, crouch: 0.15, t });
-      // la perche passe devant, entre les jambes
-      g.strokeStyle = '#7d8896'; g.lineWidth = 3;
-      g.beginPath(); g.moveTo(upX - 7, sy - 8); g.lineTo(upX + 7, sy - 8); g.stroke();
-    }
-    // brume légère en haut et en bas pour fondre la bande dans le décor
-    const fade = g.createLinearGradient(0, 0, 0, h);
-    fade.addColorStop(0, 'rgba(201,216,234,1)'); fade.addColorStop(0.08, 'rgba(201,216,234,0)');
-    fade.addColorStop(0.92, 'rgba(201,216,234,0)'); fade.addColorStop(1, 'rgba(201,216,234,1)');
-    g.fillStyle = fade; g.fillRect(0, 0, w, h);
+    // légère brume sur les rangées du fond
+    const fog = g.createLinearGradient(0, top - 20, 0, top + (h - top) * 0.35);
+    fog.addColorStop(0, 'rgba(213,230,248,0.85)'); fog.addColorStop(0.15, 'rgba(213,230,248,0.5)'); fog.addColorStop(1, 'rgba(213,230,248,0)');
+    g.fillStyle = fog; g.fillRect(0, top - 20, w, (h - top) * 0.35 + 20);
   }
-  requestAnimationFrame(draw);
+  let pending = 0;
+  const later = () => { if (!pending) pending = requestAnimationFrame(() => { pending = 0; if (home.classList.contains('visible')) draw(); }); };
+  window.addEventListener('resize', later);
+  if (window.ResizeObserver) new ResizeObserver(later).observe(home);
+  new MutationObserver(later).observe(home, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true });
+  logo.addEventListener('load', later);
+  later();
 })();
