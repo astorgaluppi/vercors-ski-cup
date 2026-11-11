@@ -82,12 +82,13 @@ window.PISTE_V1 = {
   // (700 m), après le biathlète. Un vieux panneau en bois à moitié enfoui dans la neige l'indique (« panneau »).
   // Entre « entree » et « finEntree », les sapins du bord gauche laissent passer le skieur qui s'y jette exprès :
   // le couloir apparaît alors. Il est étroit (« largeur », en m), descend en zigzag dans la forêt et rejoint la piste
-  // principale vers 970 m, en évitant l'école de ski et le secteur en diagonale qui la suit (mais pas les Frères
+  // principale vers 910 m (V5 : parcours raccourci, qui finit par une grande diagonale vers la droite), en évitant
+  // l'école de ski et le secteur en diagonale qui la suit (mais pas les Frères
   // Lhuillier). Juste avant de rejoindre la piste, un petit ressaut naturel (« ressaut ») fait sauter le skieur.
   // troncons : même principe que la piste (angle positif = vers la droite), en partant du bord gauche à « entree ».
   passageSecret: {
     // (V5 : zone d'entrée allongée, de 660 à 698 m, et panneau placé dedans, à 668 m)
-    panneau: 668, entree: 660, finEntree: 698, largeur: 7, recouvrement: 2.6, ressaut: 969,
+    panneau: 668, entree: 660, finEntree: 698, largeur: 7, recouvrement: 2.6, ressaut: 908,
     repereProvisoire: true, // VERSION DE TEST SEULEMENT : marque la zone d'entrée sur la neige (à retirer avant publication)
     troncons: [
       { longueur: 36, angle: 0 },     // entrée, le long de la piste
@@ -96,11 +97,7 @@ window.PISTE_V1 = {
       { longueur: 26, angle: -32 },
       { longueur: 26, angle: 32 },
       { longueur: 26, angle: -32 },
-      { longueur: 26, angle: 32 },
-      { longueur: 26, angle: -32 },
-      { longueur: 26, angle: 32 },
-      { longueur: 24, angle: -28 },
-      { longueur: 70, angle: 24 }     // dernier virage, vers la piste principale (ressaut à 969 m, puis sortie vers 970 m)
+      { longueur: 160, angle: 30 }    // V5 : grande diagonale vers la droite, qui rejoint la piste principale
     ]
   },
 
