@@ -283,8 +283,7 @@
       };
       // un couloir après l'autre, dans un ordre mélangé
       const order = Array.from({ length: lanes }, (_, k) => k).sort(() => rnd() - 0.5);
-      for (const k of order) add((hw) => -hw + 0.2 + (k + 0.5) * (2 * hw - 0.4) / lanes + (rnd() - 0.5) * 0.2, true);
-      for (let n = lanes; n < f.nombre; n++) add((hw) => -hw + margin + rnd() * (2 * hw - 2 * margin), false);
+      for (let n = 0; n < f.nombre; n++) { const k = order[n % lanes]; add((hw) => -hw + 0.2 + (k + 0.5) * (2 * hw - 0.4) / lanes + (rnd() - 0.5) * 0.6, true); }
       bumps.push(...placed);
     }
     // V4.1 : quelques bosses isolées, cachées dans le nuage des canons à neige
