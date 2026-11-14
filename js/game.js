@@ -262,14 +262,12 @@
 
   const bumps = [];
   (() => {
-    // V3.1 : bosses réparties au hasard (le même hasard pour tout le monde) et isolées les unes des autres.
-    // Pour que personne ne traverse un champ tout droit, une partie des bosses est placée en « couloirs » :
-    // chaque bande verticale de la piste reçoit au moins une bosse, à une hauteur tirée au hasard.
+    // V3.1 : bosses réparties de manière homogène par couloirs.
     for (const [fi, f] of P.champsDeBosses.entries()) {
       let seed = 1000 + fi * 977;
       const rnd = () => hash(seed++);
       const placed = [];
-      const lanes = f.couloirs || 14, margin = 0.9;
+      const lanes = f.couloirs || 14;
       const ok = (x, y, d) => placed.every((b) => Math.hypot(b.x - x, b.y - y) >= d);
       const add = (xOf, rFix) => {
         for (let d = f.ecartMin; d > 1.5; d -= 0.25) {
@@ -283,8 +281,7 @@
       };
       // un couloir après l'autre, dans un ordre mélangé
       const order = Array.from({ length: lanes }, (_, k) => k).sort(() => rnd() - 0.5);
-      for (const k of order) add((hw) => -hw + 0.2 + (k + 0.5) * (2 * hw - 0.4) / lanes + (rnd() - 0.5) * 0.2, true);
-      for (let n = lanes; n < f.nombre; n++) add((hw) => -hw + margin + rnd() * (2 * hw - 2 * margin), false);
+      for (let n = 0; n < f.nombre; n++) { const k = order[n % lanes], cote = Math.floor(n / lanes) % 2 ? 0.75 : 0.25; add((hw) => -hw + 0.2 + (k + cote) * (2 * hw - 0.4) / lanes + (rnd() - 0.5) * 0.3, true); }
       bumps.push(...placed);
     }
     // V4.1 : quelques bosses isolées, cachées dans le nuage des canons à neige

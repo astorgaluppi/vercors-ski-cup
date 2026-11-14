@@ -26,7 +26,7 @@ window.PISTE_V1 = {
     // V3.1 — bosses réparties au hasard (le même pour tous) et isolées : nombre de bosses, ecartMin = distance
     // minimale entre deux bosses (m). couloirs : la piste est découpée en bandes verticales qui reçoivent chacune
     // au moins une bosse, pour qu'on ne puisse pas traverser un champ tout droit.
-    { debut: 200,  longueur: 50,  nombre: 20, ecartMin: 4.5, couloirs: 8 },  // premier champ, plus facile
+    { debut: 200,  longueur: 50,  nombre: 24, ecartMin: 4.5, couloirs: 8 },  // premier champ, plus facile
     { debut: 1180, longueur: 50,  nombre: 50, ecartMin: 3.0, couloirs: 10 }   // deuxième champ, plus difficile (V4.1 : 1 180 m)
   ],
 
