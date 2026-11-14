@@ -1,0 +1,11 @@
+{
+  "name": "pas-tres-pentu-ski-cup",
+  "private": true,
+  "description": "Tests automatiques du jeu (le jeu lui-même n'a besoin d'aucune installation)",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

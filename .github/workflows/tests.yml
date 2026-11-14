@@ -1,0 +1,44 @@
+# Lance les tests automatiques du jeu sur les serveurs de GitHub :
+# - à chaque pull request (PR), pour voir avant de fusionner si la modification casse quelque chose ;
+# - à chaque modification de la branche main ;
+# - à la demande, avec le bouton « Run workflow » de l'onglet Actions.
+# Le résultat apparaît dans l'onglet « Checks » de la PR (coche verte = tout va bien, croix rouge = un test a échoué).
+name: Tests du jeu
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  tests:
+    name: Tests automatiques
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Récupérer le code du dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Installer Playwright (l'outil de test)
+        run: npm ci
+
+      - name: Installer le navigateur Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Lancer les tests
+        run: npm test
+
+      - name: Garder le rapport détaillé des tests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-des-tests
+          path: playwright-report/
+          retention-days: 14

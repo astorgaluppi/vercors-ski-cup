@@ -78,6 +78,8 @@ Nouveautés de la V5 :
 - `supabase/scores.sql` : script à lancer une fois dans Supabase (SQL Editor) pour créer la base des scores
 - `supabase/v3-skis.sql` : mise à jour V3 de la base (enregistre la paire de skis du record), sans rien effacer
 - `manifest.webmanifest`, `sw.js`, `icons/` : installation sur l'écran d'accueil et jeu hors connexion
+- `tests/`, `playwright.config.js`, `package.json`, `.github/workflows/tests.yml` : tests automatiques, lancés par GitHub
+  à chaque pull request (voir `tests/README.md`) ; le jeu n'en a pas besoin pour fonctionner
 
 ## Publier sur GitHub Pages
 Déposer tous ces fichiers à la racine d'un dépôt, puis Settings → Pages → « Deploy from a branch » → `main` / racine.
