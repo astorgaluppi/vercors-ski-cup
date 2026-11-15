@@ -8,7 +8,7 @@
 //   1. il regarde un peu plus bas sur la piste et essaie une trentaine de points d'arrivée
 //      possibles, d'un bord à l'autre ;
 //   2. pour chaque point, il imagine la trajectoire en ligne droite et donne une « note de danger »
-//      si elle passe près d'un obstacle (plaque de terre, chasse-neige, école de ski,
+//      si elle passe près d'un obstacle (sapin sur la piste, plaque de terre, chasse-neige, école de ski,
 //      biathlète, sac des Frères Lhuillier, bosse quand il va vite) ;
 //   3. il vise le point le moins dangereux et règle sa vitesse (schuss, normal ou chasse-neige)
 //      selon le secteur ;
@@ -53,6 +53,11 @@
       const bord = T.halfW(y) - Math.abs(x - T.center(y));
       if (bord < 1.4) note += 60 * (1.4 - bord);
 
+      // sapins plantés sur la piste, dans le nuage des canons à neige
+      for (const t of G.pisteTrees || []) {
+        if (Math.abs(t.y - y) > 4) continue;
+        pres(Math.hypot(x - t.x, y - t.y), CFG.treeHitRadius + 1.4);
+      }
       // plaques de terre (forme ovale)
       for (const m of G.muds) {
         if (Math.abs(m.y - y) > 6) continue;
@@ -143,8 +148,8 @@
         if (dansUnChamp(S.y + devant) || dansUnChamp(S.y)) vVoulue = 42;
         if (G.ecole && S.y > G.ecole.E.depart && S.y < G.ecole.E.debut + 60) vVoulue = 35;
         if (G.biathlete && S.bia.y > S.y - 2 && S.bia.y - S.y < 60) vVoulue = 45;
-        if (G.lhuillier && S.y > G.lhuillier.L.depart && S.y < G.lhuillier.L.fin + 5) vVoulue = 45;
-        if (P.neigeLourde && S.y > P.neigeLourde.debut - 10) vVoulue = 40;
+        if (G.lhuillier && S.y > G.lhuillier.L.depart && S.y < G.lhuillier.L.fin + 5) vVoulue = 38;
+        if (P.neigeLourde && S.y > P.neigeLourde.debut - 30) vVoulue = 40;
         if (virageDevant(S.y, 35) > 10) vVoulue = Math.min(vVoulue, 50);
         if (meilleureNote > 20) vVoulue = Math.min(vVoulue, 35);
         const v = S.v / KMH;

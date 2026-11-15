@@ -28,6 +28,7 @@
     bumpFallSpeed: 50 * KMH,
     bumpLoss: 5 * KMH,
     edgeMargin: 0.15,
+    treeHitRadius: 0.9,        // sapins plantés sur la piste : on tombe à moins de 0,9 m du tronc
     startY: -9, gateY: -6.5,
     stopRadius: 24, stopOffset: 32,
     skidDec: 45 * KMH,
@@ -260,6 +261,31 @@
     trees.sort((a, b) => a.y - b.y);
   })();
 
+  // Évolutions Yann : sapins plantés sur la piste, cachés dans le nuage des canons à neige.
+  // Placés au hasard, mais un hasard fixé d'avance (« graine ») : les mêmes pour tous les joueurs.
+  const pisteTrees = [];
+  (() => {
+    const Z = P.sapinsCanons;
+    if (!Z) return;
+    let seed = Z.graine || 7300;
+    const rnd = () => hash(seed++);
+    for (let n = 0; n < Z.nombre; n++) {
+      for (let d = Z.ecartMin, ok = false; !ok && d > 2; d -= 0.5) {
+        for (let tries = 0; tries < 400; tries++) {
+          const y = Z.debut + rnd() * (Z.fin - Z.debut);
+          const x = TRACK.center(y) + (rnd() * 2 - 1) * Z.bord * TRACK.halfW(y);
+          if (pisteTrees.every((t) => Math.hypot(t.x - x, t.y - y) >= d)) {
+            pisteTrees.push({ x, y, s: 0.95 + rnd() * 0.15, v: n % 3, piste: true });
+            ok = true; break;
+          }
+        }
+      }
+    }
+    pisteTrees.sort((a, b) => a.y - b.y);
+    trees.push(...pisteTrees);
+    trees.sort((a, b) => a.y - b.y);
+  })();
+
   const bumps = [];
   (() => {
     // V3.1 : bosses réparties de manière homogène par couloirs.
@@ -283,10 +309,6 @@
       const order = Array.from({ length: lanes }, (_, k) => k).sort(() => rnd() - 0.5);
       for (let n = 0; n < f.nombre; n++) { const k = order[n % lanes], cote = Math.floor(n / lanes) % 2 ? 0.75 : 0.25; add((hw) => -hw + 0.2 + (k + cote) * (2 * hw - 0.4) / lanes + (rnd() - 0.5) * 0.3, true); }
       bumps.push(...placed);
-    }
-    // V4.1 : quelques bosses isolées, cachées dans le nuage des canons à neige
-    for (const b of P.bossesIsolees || []) {
-      bumps.push({ x: TRACK.center(b.y) + b.x * TRACK.halfW(b.y), y: b.y, r: CFG.bumpRadius, hit: false });
     }
     bumps.sort((a, b) => a.y - b.y);
   })();
@@ -1260,6 +1282,11 @@
     if (SECRET && S.secretT >= 0 && S.jumpT < 0 && prevY < SECRET.Q.ressaut && S.y >= SECRET.Q.ressaut && SECRET.inside(S.x, S.y, 0)) {
       S.jumpT = 0;
       if (window.Sons && Sons.on.saut) Sons.on.saut();
+    }
+
+    // Évolutions Yann : sapins plantés sur la piste (nuage des canons à neige)
+    for (const t of pisteTrees) {
+      if (Math.abs(t.y - S.y) < 2 && Math.hypot(S.x - t.x, S.y - t.y) < CFG.treeHitRadius) { fall('arbre'); return; }
     }
 
     // chasse-neige garés
@@ -2535,5 +2562,5 @@
   requestAnimationFrame(frame);
 
   // Accès pour les tests automatiques et le dessin des icônes
-  window.PTPSC = { drawSkier, state: S, input, track: TRACK, bumps, plows, muds, ecole: ECOLE, canons: CANONS, biathlete: BIATH, lhuillier: LHU, secret: SECRET, trees, skis: SKIS, setSki: (id) => { ski = SKIS.find((k) => k.id === id) || ski; }, cfg: CFG, step, fmt, resetRace, goHome, showScreen };
+  window.PTPSC = { drawSkier, state: S, input, track: TRACK, bumps, plows, muds, ecole: ECOLE, canons: CANONS, biathlete: BIATH, lhuillier: LHU, secret: SECRET, trees, pisteTrees, skis: SKIS, setSki: (id) => { ski = SKIS.find((k) => k.id === id) || ski; }, cfg: CFG, step, fmt, resetRace, goHome, showScreen };
 })();

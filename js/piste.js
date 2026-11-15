@@ -54,13 +54,12 @@ window.PISTE_V1 = {
     canons: [{ y: 375, cote: -1 }, { y: 395, cote: 1 }, { y: 415, cote: -1 }, { y: 435, cote: 1 }]
   },
 
-  // V4.1 — Bosses isolées, cachées dans le nuage des canons à neige (pas de banderole).
-  // x : position en travers (-1 = bord gauche, 1 = bord droit). Mêmes règles de chute que les champs de bosses.
-  bossesIsolees: [
-    { y: 392, x: -0.30 },
-    { y: 418, x: 0.35 },
-    { y: 446, x: -0.6 }
-  ],
+  // Évolutions Yann — Sapins cachés dans le nuage des canons à neige (remplacent les 3 bosses isolées de la V4.1).
+  // Entre « debut » et « fin » (m), « nombre » sapins sont plantés au hasard sur la piste (un hasard fixé d'avance
+  // par « graine » : le même pour tout le monde). ecartMin : distance minimale entre deux sapins (m), pour qu'on
+  // puisse toujours passer entre eux ; bord : part de la demi-largeur où l'on peut planter (1 = jusqu'aux sapins du bord).
+  // Les toucher fait tomber, comme les sapins du bord de la piste.
+  sapinsCanons: { debut: 385, fin: 450, nombre: 6, ecartMin: 8, bord: 0.6, graine: 7300 },
 
   // V4 — Le biathlète (« Martin Fourcade ! »), vers 615 m (V4.1 : déplacé dans le long secteur sans obstacle, avant
   // l'entrée du passage secret de la V5 vers 690 m) : il remonte la piste à contresens en pas de patineur. debut : hauteur d'où il part (m) ;
