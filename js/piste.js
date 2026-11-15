@@ -65,7 +65,7 @@ window.PISTE_V1 = {
   // l'entrée du passage secret de la V5 vers 690 m) : il remonte la piste à contresens en pas de patineur. debut : hauteur d'où il part (m) ;
   // depart : il se met en route quand le joueur passe cette hauteur ; vitesse : vitesse de montée (km/h) ;
   // lateral : vitesse (km/h) à laquelle il se décale vers le joueur, tant qu'il est devant lui.
-  biathlete: { debut: 632, depart: 522, vitesse: 11, lateral: 11 },
+  biathlete: { debut: 632, depart: 522, vitesse: 12, lateral: 12 },
 
   // V4 — Les Frères Lhuillier (« Les frères Lhuillier ! »), vers 1 000 m, juste après la sortie du futur passage
   // secret (V5) et avant le 2e champ de bosses. Deux frères en treillis sortent des sapins, un de chaque côté, et
