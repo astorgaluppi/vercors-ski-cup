@@ -27,7 +27,7 @@
     // « derapageVitesseMin », le skieur dérape : gerbe de neige et perte de vitesse, jusqu'à « derapagePerte » par
     // seconde quand l'écart atteint « derapageAnglePlein ». La perte est divisée par l'adhérence des skis :
     // moins avec Les Tante Rhéa, plus avec Les Neige d'en Haut. Pas de dérapage en chasse-neige (on freine déjà).
-    derapageAngle: 30 * DEG,       // en dessous : virage propre, pas de dérapage
+    derapageAngle: 40 * DEG,       // en dessous : virage propre, pas de dérapage
     derapageAnglePlein: 90 * DEG,  // à partir de là : dérapage maximal
     derapageVitesseMin: 25 * KMH,  // pas de dérapage plus lentement
     derapagePerte: 15 * KMH,       // perte de vitesse par seconde au dérapage maximal (Madame Bec)
