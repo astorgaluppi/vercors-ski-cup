@@ -313,7 +313,7 @@
       };
       // un couloir après l'autre, dans un ordre mélangé
       const order = Array.from({ length: lanes }, (_, k) => k).sort(() => rnd() - 0.5);
-      for (let n = 0; n < f.nombre; n++) { const k = order[n % lanes], cote = Math.floor(n / lanes) % 2 ? 0.75 : 0.25; add((hw) => -hw + 0.2 + (k + cote) * (2 * hw - 0.4) / lanes + (rnd() - 0.5) * 0.3, true); }
+      for (let n = 0; n < f.nombre; n++) { const k = order[n % lanes], cote = Math.floor(n / lanes) % 2 ? 0.75 : 0.25; add((hw) => -hw + 0.2 + (k + cote) * (2 * hw - 0.4) / lanes + (rnd() - 0.5) * 0.2, true); }
       bumps.push(...placed);
     }
     bumps.sort((a, b) => a.y - b.y);
