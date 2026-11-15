@@ -29,6 +29,9 @@ Nouveautés de la V3 :
   « Rejouer » repart avec la même paire ; la paire du record s'affiche dans le classement.
 - **Quel départ !** : appuyer vers le bas pile au « Partez ! » (entre 0,15 s avant et 0,2 s après) fait partir à 28 km/h
   au lieu de 8 km/h, avec une bannière verte « Quel départ ! ». Pas de bonus avec « Les Tante Rhéa ».
+- **Dérapage** : un virage trop brusque (plus de 30° d'un coup, au-dessus de 25 km/h) fait déraper le skieur : gerbe de neige,
+  bruit de dérapage et perte de vitesse (jusqu'à 15 km/h par seconde, moins avec « Les Tante Rhéa », plus avec
+  « Les Neige d'en Haut »). Les belles trajectoires, en virages progressifs, vont plus vite.
 - **École de ski** (« Le moniteur de ski ! », vers 815 m) : un moniteur en rouge suivi de 6 enfants descend en
   zigzag d'un bord à l'autre à 8 km/h ; toucher l’un des 7 skieurs (zone de contact un peu plus large que le dessin) fait tomber.
 - **Champs de bosses en passages** : rangées serrées avec une seule ouverture qui change de côté à chaque rangée,

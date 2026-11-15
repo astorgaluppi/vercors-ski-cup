@@ -19,6 +19,7 @@
 (() => {
   const KMH = 1 / 3.6;            // km/h -> m/s
   const IMAGE = 1 / 120;          // durée d'une image de jeu (s), la même que dans game.js
+  const PAS_SIMU = 1 / 30;        // pas de temps de la trajectoire simulée (s)
 
   function descendre(options = {}) {
     const G = window.PTPSC;
@@ -42,6 +43,26 @@
       let max = 0;
       for (let d = 2; d <= distance; d += 2) max = Math.max(max, Math.abs(T.angle(y + d) - a0));
       return max * 180 / Math.PI;
+    }
+
+    // Positions successives du skieur (toutes les PAS_SIMU secondes, pendant « duree » s) s'il vise le point x
+    // situé « devant » mètres plus bas, avec la même façon de tourner que le pilote et la vitesse de rotation
+    // limitée par l'adhérence (on prend les skis qui tournent le moins bien, par prudence).
+    const gripMin = Math.min(...G.skis.map((k) => k.grip));
+    function trajectoireVers(xCible, devant, duree, gripMul = 1) {
+      let px = S.x, py = S.y, th = S.th;
+      const v = Math.max(1, S.v), yCible = S.y + devant;
+      const omega = Math.min(CFG.maxTurnRate * gripMin, CFG.grip * gripMin * gripMul / v);
+      const pos = [{ x: px, y: py }];
+      for (let t = 0; t < duree; t += PAS_SIMU) {
+        const cap = Math.atan2(xCible - px, Math.max(2, yCible - py));
+        const steer = Math.max(-1, Math.min(1, (cap - th) * 3 + cap / CFG.maxAngle));
+        const dth = steer * CFG.maxAngle - th;
+        th += Math.sign(dth) * Math.min(Math.abs(dth), omega * PAS_SIMU);
+        px += v * Math.sin(th) * PAS_SIMU; py += v * Math.cos(th) * PAS_SIMU;
+        pos.push({ x: px, y: py });
+      }
+      return pos;
     }
 
     // Note de danger d'un point (x, y) que le skieur atteindra dans « dt » secondes.
@@ -111,23 +132,35 @@
         const ya = S.y + devant;
         const c = T.center(ya), hw = T.halfW(ya) - 1.6;
 
+        const enNeigeLourde = P.neigeLourde && S.y + devant > P.neigeLourde.debut - 5;
         // on essaie 31 points d'arrivée possibles, d'un bord à l'autre
         let meilleur = cible, meilleureNote = Infinity;
         for (let i = 0; i <= 30; i++) {
           const x = c - hw + (2 * hw) * i / 30;
           let note = 0.08 * Math.abs(x - c) + 0.15 * Math.abs(x - cible);
-          for (let k = 1; k <= 8; k++) {
-            const f = k / 8;
-            const px = S.x + (x - S.x) * f, py = S.y + devant * f;
-            note += danger(px, py, (py - S.y) / vy);
+          if (enNeigeLourde) {
+            // neige lourde : les skis tournent moins bien, on suit la trajectoire simulée plutôt qu'une ligne droite
+            const pos = trajectoireVers(x, devant, devant / vy, CFG.heavyGripMul);
+            for (let k = 1; k <= 8; k++) {
+              const p = pos[Math.round(k / 8 * (pos.length - 1))];
+              note += danger(p.x, p.y, (p.y - S.y) / vy);
+            }
+          } else {
+            for (let k = 1; k <= 8; k++) {
+              const f = k / 8;
+              const px = S.x + (x - S.x) * f, py = S.y + devant * f;
+              note += danger(px, py, (py - S.y) / vy);
+            }
           }
-          // sacs des Frères Lhuillier déjà lancés : on regarde où l'on sera au moment précis où chacun tombe
-          if (G.lhuillier && S.lhu) {
+          // sacs des Frères Lhuillier déjà lancés : on simule la trajectoire (avec la vitesse de rotation limitée
+          // des skis) et on regarde où l'on sera au moment précis où chaque sac tombe
+          if (G.lhuillier && S.lhu && S.lhu.bags.some((sac) => !sac.landed)) {
+            const pos = trajectoireVers(x, devant, 1.2);
             for (const sac of S.lhu.bags) {
               if (sac.landed) continue;
               const tombe = sac.t1 - S.lhu.t;
-              const px = S.x + (x - S.x) * tombe * vy / devant, py = S.y + vy * tombe;
-              const d = Math.hypot(px - sac.tx, (py - sac.ty) * 1.25), rayon = G.lhuillier.L.rayon + 1.5;
+              const p = pos[Math.min(pos.length - 1, Math.max(0, Math.round(tombe / PAS_SIMU)))];
+              const d = Math.hypot(p.x - sac.tx, (p.y - sac.ty) * 1.25), rayon = G.lhuillier.L.rayon + 1.5;
               if (d < rayon) note += 300 * (rayon - d) / rayon;
             }
           }
@@ -148,7 +181,7 @@
         if (dansUnChamp(S.y + devant) || dansUnChamp(S.y)) vVoulue = 42;
         if (G.ecole && S.y > G.ecole.E.depart && S.y < G.ecole.E.debut + 60) vVoulue = 35;
         if (G.biathlete && S.bia.y > S.y - 2 && S.bia.y - S.y < 60) vVoulue = 45;
-        if (G.lhuillier && S.y > G.lhuillier.L.depart && S.y < G.lhuillier.L.fin + 5) vVoulue = 35;
+        if (G.lhuillier && S.y > G.lhuillier.L.depart && S.y < G.lhuillier.L.fin + 5) vVoulue = 30;
         if (P.neigeLourde && S.y > P.neigeLourde.debut - 30) vVoulue = 40;
         if (virageDevant(S.y, 35) > 10) vVoulue = Math.min(vVoulue, 50);
         if (meilleureNote > 20) vVoulue = Math.min(vVoulue, 35);

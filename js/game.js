@@ -22,6 +22,15 @@
     brakeGripMul: 1.5,
     maxTurnRate: 4.5,          // rad/s, à très basse vitesse
     startSpeed: 8 * KMH,
+    // Évolutions Yann : dérapage dans les virages trop brusques. Quand on demande un changement de direction de plus
+    // de « derapageAngle » d'un coup (écart entre la direction visée et la direction des skis), au-dessus de
+    // « derapageVitesseMin », le skieur dérape : gerbe de neige et perte de vitesse, jusqu'à « derapagePerte » par
+    // seconde quand l'écart atteint « derapageAnglePlein ». La perte est divisée par l'adhérence des skis :
+    // moins avec Les Tante Rhéa, plus avec Les Neige d'en Haut. Pas de dérapage en chasse-neige (on freine déjà).
+    derapageAngle: 30 * DEG,       // en dessous : virage propre, pas de dérapage
+    derapageAnglePlein: 90 * DEG,  // à partir de là : dérapage maximal
+    derapageVitesseMin: 25 * KMH,  // pas de dérapage plus lentement
+    derapagePerte: 15 * KMH,       // perte de vitesse par seconde au dérapage maximal (Madame Bec)
     // Évolutions Yann : « Quel départ ! » — appuyer vers le bas pile au « Partez ! » donne un bonus de vitesse au départ.
     // La pression doit commencer entre « avant » s avant et « apres » s après le « Partez ! » (tenir la flèche
     // enfoncée depuis avant ne compte pas). Pas de bonus avec les skis marqués sansBonDepart (Les Tante Rhéa).
@@ -935,7 +944,7 @@
     // V4 : canons à neige (fogT < 0 : pas encore en marche), biathlète, Frères Lhuillier
     S.fogT = -1; S.bia = BIATH ? BIATH.init() : null;
     S.lhu = { t: -1, next: 0, n: 0, bags: [] }; S.coins = []; S.groundCoins = [];
-    S.secretT = -1; S.jumpT = -1; // V5 : passage secret pas encore découvert, pas de saut
+    S.derapage = 0; S.secretT = -1; S.jumpT = -1; // V5 : passage secret pas encore découvert, pas de saut
     S.ref = window.Famille ? Famille.reference() : null; // record de la famille au départ
     input.keys.clear(); input.touch = null;
     showScreen(null);
@@ -1211,6 +1220,13 @@
     // force du virage pour le son : skis sur la carre (trajectoire en travers) + vitesse de rotation
     S.turnAmt = Math.min(1, Math.abs(Math.sin(S.th)) * 1.4 + Math.abs(dth / dt) / 1.5);
 
+    // Évolutions Yann : dérapage si le virage demandé est trop brusque (0 = virage propre, 1 = dérapage maximal)
+    S.derapage = 0;
+    if (!input.brake && S.v > CFG.derapageVitesseMin && Math.abs(d) > CFG.derapageAngle) {
+      S.derapage = Math.min(1, (Math.abs(d) - CFG.derapageAngle) / (CFG.derapageAnglePlein - CFG.derapageAngle));
+      S.v = Math.max(CFG.derapageVitesseMin, S.v - CFG.derapagePerte / ski.grip * S.derapage * dt);
+    }
+
     // vitesse (en neige lourde, les vitesses maximales baissent)
     const cos = Math.cos(S.th);
     const hv = heavy ? CFG.heavySpeedMul : 1;
@@ -1358,6 +1374,8 @@
     }
     if (input.brake && S.v > ski.min * KMH + 0.5) { if (Math.random() < 0.7) { spray(-1, 1); spray(1, 1); } }
     if (Math.abs(target - S.th) > 0.3 && S.v > 12 && Math.random() < 0.5) spray(Math.sign(S.th) || 1, 1);
+    // dérapage : grosse gerbe de neige côté extérieur du virage
+    if (S.derapage > 0) spray(-Math.sign(target - S.th) || 1, Math.round(1 + S.derapage * 3), 1 + S.derapage * 0.8);
   }
 
   function finishStep(dt) {
@@ -2554,7 +2572,7 @@
         moving: active, v: S.v,
         turn: S.mode === 'race' ? (S.turnAmt || 0) : 0,
         brake: S.mode === 'race' && input.brake,
-        skid: S.mode === 'finishing' && S.skidding,
+        skid: (S.mode === 'finishing' && S.skidding) || (S.mode === 'race' && S.derapage > 0.4),
         heavy: S.mode === 'race' && S.heavy,
         // bip de recul quand un chasse-neige est à l'écran (plus fort quand il est proche)
         reverse: (S.mode === 'race' || S.mode === 'countdown') ? plows.reduce((m, e) => {
