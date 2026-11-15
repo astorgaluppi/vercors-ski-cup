@@ -22,12 +22,28 @@
     brakeGripMul: 1.5,
     maxTurnRate: 4.5,          // rad/s, à très basse vitesse
     startSpeed: 8 * KMH,
+    // Évolutions Yann : dérapage dans les virages trop brusques. Quand on demande un changement de direction de plus
+    // de « derapageAngle » d'un coup (écart entre la direction visée et la direction des skis), au-dessus de
+    // « derapageVitesseMin », le skieur dérape : gerbe de neige et perte de vitesse, jusqu'à « derapagePerte » par
+    // seconde quand l'écart atteint « derapageAnglePlein ». La perte est divisée par l'adhérence des skis :
+    // moins avec Les Tante Rhéa, plus avec Les Neige d'en Haut. Pas de dérapage en chasse-neige (on freine déjà).
+    derapageAngle: 40 * DEG,       // en dessous : virage propre, pas de dérapage
+    derapageAnglePlein: 90 * DEG,  // à partir de là : dérapage maximal
+    derapageVitesseMin: 25 * KMH,  // pas de dérapage plus lentement
+    derapagePerte: 15 * KMH,       // perte de vitesse par seconde au dérapage maximal (Madame Bec)
+    // Évolutions Yann : « Quel départ ! » — appuyer vers le bas pile au « Partez ! » donne un bonus de vitesse au départ.
+    // La pression doit commencer entre « avant » s avant et « apres » s après le « Partez ! » (tenir la flèche
+    // enfoncée depuis avant ne compte pas). Pas de bonus avec les skis marqués sansBonDepart (Les Tante Rhéa).
+    bonDepartAvant: 0.15,      // s avant le « Partez ! »
+    bonDepartApres: 0.2,       // s après le « Partez ! »
+    bonDepartVitesse: 20 * KMH, // vitesse en plus au départ (8 km/h → 28 km/h)
     bumpRadius: 1.15,
     bumpHitRadius: 0.95,
     bumpFallAngle: 30 * DEG,
     bumpFallSpeed: 50 * KMH,
     bumpLoss: 5 * KMH,
     edgeMargin: 0.15,
+    treeHitRadius: 0.9,        // sapins plantés sur la piste : on tombe à moins de 0,9 m du tronc
     startY: -9, gateY: -6.5,
     stopRadius: 24, stopOffset: 32,
     skidDec: 45 * KMH,
@@ -53,7 +69,7 @@
 
   // V3 : les trois paires de skis (vitesse max en schuss, vitesse min en chasse-neige, adhérence dans les virages)
   const SKIS = [
-    { id: 'rhea', nom: 'Les Tante Rhéa', devise: 'rustiques mais efficaces', max: 75, min: 5, grip: 1.3,
+    { id: 'rhea', nom: 'Les Tante Rhéa', devise: 'rustiques mais efficaces', max: 75, min: 5, grip: 1.3, sansBonDepart: true,
       look: { ski: '#b5793a', skiTip: '#7a4a1e' } },
     { id: 'bec', nom: 'Les Madame Bec', devise: 'hors de prix mais plutôt polyvalents', max: 90, min: 10, grip: 1,
       look: { ski: '#e53935', skiTip: '#ffca28' } },
@@ -260,6 +276,31 @@
     trees.sort((a, b) => a.y - b.y);
   })();
 
+  // Évolutions Yann : sapins plantés sur la piste, cachés dans le nuage des canons à neige.
+  // Placés au hasard, mais un hasard fixé d'avance (« graine ») : les mêmes pour tous les joueurs.
+  const pisteTrees = [];
+  (() => {
+    const Z = P.sapinsCanons;
+    if (!Z) return;
+    let seed = Z.graine || 7300;
+    const rnd = () => hash(seed++);
+    for (let n = 0; n < Z.nombre; n++) {
+      for (let d = Z.ecartMin, ok = false; !ok && d > 2; d -= 0.5) {
+        for (let tries = 0; tries < 400; tries++) {
+          const y = Z.debut + rnd() * (Z.fin - Z.debut);
+          const x = TRACK.center(y) + (rnd() * 2 - 1) * Z.bord * TRACK.halfW(y);
+          if (pisteTrees.every((t) => Math.hypot(t.x - x, t.y - y) >= d)) {
+            pisteTrees.push({ x, y, s: 0.95 + rnd() * 0.15, v: n % 3, piste: true });
+            ok = true; break;
+          }
+        }
+      }
+    }
+    pisteTrees.sort((a, b) => a.y - b.y);
+    trees.push(...pisteTrees);
+    trees.sort((a, b) => a.y - b.y);
+  })();
+
   const bumps = [];
   (() => {
     // V3.1 : bosses réparties de manière homogène par couloirs.
@@ -281,12 +322,8 @@
       };
       // un couloir après l'autre, dans un ordre mélangé
       const order = Array.from({ length: lanes }, (_, k) => k).sort(() => rnd() - 0.5);
-      for (let n = 0; n < f.nombre; n++) { const k = order[n % lanes], cote = Math.floor(n / lanes) % 2 ? 0.75 : 0.25; add((hw) => -hw + 0.2 + (k + cote) * (2 * hw - 0.4) / lanes + (rnd() - 0.5) * 0.3, true); }
+      for (let n = 0; n < f.nombre; n++) { const k = order[n % lanes], cote = Math.floor(n / lanes) % 2 ? 0.75 : 0.25; add((hw) => -hw + 0.2 + (k + cote) * (2 * hw - 0.4) / lanes + (rnd() - 0.5) * 0.2, true); }
       bumps.push(...placed);
-    }
-    // V4.1 : quelques bosses isolées, cachées dans le nuage des canons à neige
-    for (const b of P.bossesIsolees || []) {
-      bumps.push({ x: TRACK.center(b.y) + b.x * TRACK.halfW(b.y), y: b.y, r: CFG.bumpRadius, hit: false });
     }
     bumps.sort((a, b) => a.y - b.y);
   })();
@@ -900,14 +937,14 @@
       x: TRACK.center(CFG.startY), y: CFG.startY, v: 0, th: 0,
       countdown: 3.6, frac: CFG.skierScreenFrac, splits: [], finalTime: null, endTimer: 0, fallT: 0, lift: 0,
       banner: null, bannerSeen: {}, splitMsg: null, particles: [], trail: [], lastTrailY: CFG.startY,
-      gateOpen: 0, announced: {}, fallReason: ''
+      gateOpen: 0, announced: {}, fallReason: '', bonDepart: false, tuckPrev: false
     });
     S.camX = S.x; S.camY = S.y - viewH() * CFG.skierScreenFrac;
     S.lastBeep = null; S.heavy = false; S.turnAmt = 0; S.schoolT = 0; S.edgeT = 0; S.edgeDir = 0; S.edgeLast = 0;
     // V4 : canons à neige (fogT < 0 : pas encore en marche), biathlète, Frères Lhuillier
     S.fogT = -1; S.bia = BIATH ? BIATH.init() : null;
     S.lhu = { t: -1, next: 0, n: 0, bags: [] }; S.coins = []; S.groundCoins = [];
-    S.secretT = -1; S.jumpT = -1; // V5 : passage secret pas encore découvert, pas de saut
+    S.derapage = 0; S.secretT = -1; S.jumpT = -1; // V5 : passage secret pas encore découvert, pas de saut
     S.ref = window.Famille ? Famille.reference() : null; // record de la famille au départ
     input.keys.clear(); input.touch = null;
     showScreen(null);
@@ -961,6 +998,18 @@
     S.t += dt;
     readInput();
 
+    // Évolutions Yann : « Quel départ ! » si on appuie vers le bas pile au « Partez ! » (pas avec Les Tante Rhéa)
+    const appui = input.tuck && !S.tuckPrev;
+    S.tuckPrev = input.tuck;
+    if (appui && !S.bonDepart && !ski.sansBonDepart && (S.mode === 'countdown' || S.mode === 'race')) {
+      const ecart = 0.6 - S.countdown; // temps depuis le « Partez ! » (négatif avant)
+      if (ecart >= -CFG.bonDepartAvant && ecart <= CFG.bonDepartApres) {
+        S.bonDepart = true;
+        if (S.mode === 'race') S.v += CFG.bonDepartVitesse; // sinon, le bonus est donné au « Partez ! »
+        showBanner('Quel départ !', 'secret');
+      }
+    }
+
     if (S.mode === 'countdown' || (S.mode === 'race' && S.countdown > 0)) {
       const cd = S.countdown - (S.mode === 'countdown' ? dt : 0);
       const n = cd > 2.6 ? 3 : cd > 1.6 ? 2 : cd > 0.6 ? 1 : 0;
@@ -972,7 +1021,7 @@
       if (S.countdown <= 0.6 && S.gateOpen === 0) S.gateOpen = 0.001;
       if (S.countdown <= 0.6) {
         S.mode = 'race';
-        S.v = CFG.startSpeed;
+        S.v = CFG.startSpeed + (S.bonDepart ? CFG.bonDepartVitesse : 0);
       }
     }
     if (S.gateOpen > 0 && S.gateOpen < 1) S.gateOpen = Math.min(1, S.gateOpen + dt * 3);
@@ -1171,6 +1220,13 @@
     // force du virage pour le son : skis sur la carre (trajectoire en travers) + vitesse de rotation
     S.turnAmt = Math.min(1, Math.abs(Math.sin(S.th)) * 1.4 + Math.abs(dth / dt) / 1.5);
 
+    // Évolutions Yann : dérapage si le virage demandé est trop brusque (0 = virage propre, 1 = dérapage maximal)
+    S.derapage = 0;
+    if (!input.brake && S.v > CFG.derapageVitesseMin && Math.abs(d) > CFG.derapageAngle) {
+      S.derapage = Math.min(1, (Math.abs(d) - CFG.derapageAngle) / (CFG.derapageAnglePlein - CFG.derapageAngle));
+      S.v = Math.max(CFG.derapageVitesseMin, S.v - CFG.derapagePerte / ski.grip * S.derapage * dt);
+    }
+
     // vitesse (en neige lourde, les vitesses maximales baissent)
     const cos = Math.cos(S.th);
     const hv = heavy ? CFG.heavySpeedMul : 1;
@@ -1262,6 +1318,11 @@
       if (window.Sons && Sons.on.saut) Sons.on.saut();
     }
 
+    // Évolutions Yann : sapins plantés sur la piste (nuage des canons à neige)
+    for (const t of pisteTrees) {
+      if (Math.abs(t.y - S.y) < 2 && Math.hypot(S.x - t.x, S.y - t.y) < CFG.treeHitRadius) { fall('arbre'); return; }
+    }
+
     // chasse-neige garés
     for (const e of plows) {
       if (Math.abs(S.y - e.y) > CFG.plowL) continue;
@@ -1313,6 +1374,8 @@
     }
     if (input.brake && S.v > ski.min * KMH + 0.5) { if (Math.random() < 0.7) { spray(-1, 1); spray(1, 1); } }
     if (Math.abs(target - S.th) > 0.3 && S.v > 12 && Math.random() < 0.5) spray(Math.sign(S.th) || 1, 1);
+    // dérapage : grosse gerbe de neige côté extérieur du virage
+    if (S.derapage > 0) spray(-Math.sign(target - S.th) || 1, Math.round(1 + S.derapage * 3), 1 + S.derapage * 0.8);
   }
 
   function finishStep(dt) {
@@ -2509,7 +2572,7 @@
         moving: active, v: S.v,
         turn: S.mode === 'race' ? (S.turnAmt || 0) : 0,
         brake: S.mode === 'race' && input.brake,
-        skid: S.mode === 'finishing' && S.skidding,
+        skid: (S.mode === 'finishing' && S.skidding) || (S.mode === 'race' && S.derapage > 0.4),
         heavy: S.mode === 'race' && S.heavy,
         // bip de recul quand un chasse-neige est à l'écran (plus fort quand il est proche)
         reverse: (S.mode === 'race' || S.mode === 'countdown') ? plows.reduce((m, e) => {
@@ -2535,5 +2598,5 @@
   requestAnimationFrame(frame);
 
   // Accès pour les tests automatiques et le dessin des icônes
-  window.PTPSC = { drawSkier, state: S, input, track: TRACK, bumps, plows, muds, ecole: ECOLE, canons: CANONS, biathlete: BIATH, lhuillier: LHU, secret: SECRET, trees, skis: SKIS, setSki: (id) => { ski = SKIS.find((k) => k.id === id) || ski; }, cfg: CFG, step, fmt, resetRace, goHome, showScreen };
+  window.PTPSC = { drawSkier, state: S, input, track: TRACK, bumps, plows, muds, ecole: ECOLE, canons: CANONS, biathlete: BIATH, lhuillier: LHU, secret: SECRET, trees, pisteTrees, skis: SKIS, setSki: (id) => { ski = SKIS.find((k) => k.id === id) || ski; }, cfg: CFG, step, fmt, resetRace, goHome, showScreen };
 })();

@@ -27,7 +27,7 @@ window.PISTE_V1 = {
     // minimale entre deux bosses (m). couloirs : la piste est découpée en bandes verticales qui reçoivent chacune
     // au moins une bosse, pour qu'on ne puisse pas traverser un champ tout droit.
     { debut: 200,  longueur: 50,  nombre: 24, ecartMin: 4.5, couloirs: 8 },  // premier champ, plus facile
-    { debut: 1180, longueur: 50,  nombre: 50, ecartMin: 3.0, couloirs: 10 }   // deuxième champ, plus difficile (V4.1 : 1 180 m)
+    { debut: 1180, longueur: 50,  nombre: 45, ecartMin: 3.0, couloirs: 9 }   // deuxième champ, plus difficile (V4.1 : 1 180 m)
   ],
 
   // V2 — deux chasse-neige garés de biais, de chaque côté, en chicane très large (échauffement).
@@ -47,26 +47,25 @@ window.PISTE_V1 = {
   // V4 — Canons à neige (« Canons à neige ! »), vers 365 m (V4.1 : 100 m plus loin), pour que le nuage couvre aussi
   // le début du secteur en diagonale (370 à 440 m).
   // Les canons se mettent en marche quand le joueur passe « depart » et soufflent pendant « duree » secondes :
-  // un nuage de neige couvre l'écran et ne laisse voir qu'environ 30 % de la piste (« visible »).
+  // un nuage de neige couvre l'écran et ne laisse voir qu'environ 15 % de la piste (« visible », évolutions Yann : 0.15 au lieu de 0.3, et 8 s au lieu de 6,5 s pour couvrir le dernier sapin).
   // canons : y = hauteur du canon (m), cote : -1 = bord gauche, 1 = bord droit.
   canonsANeige: {
-    depart: 365, duree: 6.5, visible: 0.3,
+    depart: 365, duree: 8, visible: 0.15,
     canons: [{ y: 375, cote: -1 }, { y: 395, cote: 1 }, { y: 415, cote: -1 }, { y: 435, cote: 1 }]
   },
 
-  // V4.1 — Bosses isolées, cachées dans le nuage des canons à neige (pas de banderole).
-  // x : position en travers (-1 = bord gauche, 1 = bord droit). Mêmes règles de chute que les champs de bosses.
-  bossesIsolees: [
-    { y: 392, x: -0.30 },
-    { y: 418, x: 0.35 },
-    { y: 446, x: -0.6 }
-  ],
+  // Évolutions Yann — Sapins cachés dans le nuage des canons à neige (remplacent les 3 bosses isolées de la V4.1).
+  // Entre « debut » et « fin » (m), « nombre » sapins sont plantés au hasard sur la piste (un hasard fixé d'avance
+  // par « graine » : le même pour tout le monde). ecartMin : distance minimale entre deux sapins (m), pour qu'on
+  // puisse toujours passer entre eux ; bord : part de la demi-largeur où l'on peut planter (1 = jusqu'aux sapins du bord).
+  // Les toucher fait tomber, comme les sapins du bord de la piste.
+  sapinsCanons: { debut: 385, fin: 450, nombre: 6, ecartMin: 8, bord: 0.6, graine: 7300 },
 
   // V4 — Le biathlète (« Martin Fourcade ! »), vers 615 m (V4.1 : déplacé dans le long secteur sans obstacle, avant
   // l'entrée du passage secret de la V5 vers 690 m) : il remonte la piste à contresens en pas de patineur. debut : hauteur d'où il part (m) ;
   // depart : il se met en route quand le joueur passe cette hauteur ; vitesse : vitesse de montée (km/h) ;
   // lateral : vitesse (km/h) à laquelle il se décale vers le joueur, tant qu'il est devant lui.
-  biathlete: { debut: 632, depart: 522, vitesse: 11, lateral: 11 },
+  biathlete: { debut: 632, depart: 522, vitesse: 12, lateral: 12 },
 
   // V4 — Les Frères Lhuillier (« Les frères Lhuillier ! »), vers 1 000 m, juste après la sortie du futur passage
   // secret (V5) et avant le 2e champ de bosses. Deux frères en treillis sortent des sapins, un de chaque côté, et

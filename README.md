@@ -27,6 +27,11 @@ Nouveautés de la V3 :
 - **Choix des skis** juste avant la course : « Les Tante Rhéa » (75 km/h, chasse-neige jusqu'à 5 km/h, virages +30 %),
   « Les Madame Bec » (réglages de la V2, présélectionnée) et « Les Neige d'en Haut » (100 km/h, 15 km/h, virages −20 %).
   « Rejouer » repart avec la même paire ; la paire du record s'affiche dans le classement.
+- **Quel départ !** : appuyer vers le bas pile au « Partez ! » (entre 0,15 s avant et 0,2 s après) fait partir à 28 km/h
+  au lieu de 8 km/h, avec une bannière verte « Quel départ ! ». Pas de bonus avec « Les Tante Rhéa ».
+- **Dérapage** : un virage trop brusque (plus de 30° d'un coup, au-dessus de 25 km/h) fait déraper le skieur : gerbe de neige,
+  bruit de dérapage et perte de vitesse (jusqu'à 15 km/h par seconde, moins avec « Les Tante Rhéa », plus avec
+  « Les Neige d'en Haut »). Les belles trajectoires, en virages progressifs, vont plus vite.
 - **École de ski** (« Le moniteur de ski ! », vers 815 m) : un moniteur en rouge suivi de 6 enfants descend en
   zigzag d'un bord à l'autre à 8 km/h ; toucher l’un des 7 skieurs (zone de contact un peu plus large que le dessin) fait tomber.
 - **Champs de bosses en passages** : rangées serrées avec une seule ouverture qui change de côté à chaque rangée,
@@ -38,9 +43,9 @@ Nouveautés de la V3 :
 
 Nouveautés de la V4 : les derniers obstacles
 - **Canons à neige** (« Canons à neige ! », vers 365 m, au début du secteur en diagonale) : quatre canons au bord
-  de la piste se mettent en marche à l'approche du skieur et soufflent pendant 6,5 s. Un nuage de neige couvre l'écran
-  et ne laisse voir qu'environ 30 % de la piste et du skieur. Rien ne fait tomber en soi, mais sapins et virage
-  deviennent difficiles à voir, et trois bosses isolées se cachent dans le nuage (V4.1). On entend le souffle des canons.
+  de la piste se mettent en marche à l'approche du skieur et soufflent pendant 8 s. Un nuage de neige couvre l'écran
+  et ne laisse voir qu'environ 15 % de la piste et du skieur. Le nuage ne fait pas tomber en soi, mais sapins et virage
+  deviennent difficiles à voir, et cinq ou six sapins plantés sur la piste se cachent dans le nuage. On entend le souffle des canons.
 - **Le biathlète** (« Martin Fourcade ! », vers 615 m depuis la V4.1, dans le long secteur vide, avant l'entrée du futur passage secret) :
   en combinaison noire et jaune, carabine dans le dos, il remonte la piste à contresens en pas de patineur (11 km/h).
   Tant qu'il est devant le joueur, il se décale vers lui pour lui foncer dessus : il faut l'esquiver au dernier moment.
