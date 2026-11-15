@@ -40,8 +40,8 @@ Nouveautés de la V3 :
 
 Nouveautés de la V4 : les derniers obstacles
 - **Canons à neige** (« Canons à neige ! », vers 365 m, au début du secteur en diagonale) : quatre canons au bord
-  de la piste se mettent en marche à l'approche du skieur et soufflent pendant 6,5 s. Un nuage de neige couvre l'écran
-  et ne laisse voir qu'environ 30 % de la piste et du skieur. Le nuage ne fait pas tomber en soi, mais sapins et virage
+  de la piste se mettent en marche à l'approche du skieur et soufflent pendant 8 s. Un nuage de neige couvre l'écran
+  et ne laisse voir qu'environ 15 % de la piste et du skieur. Le nuage ne fait pas tomber en soi, mais sapins et virage
   deviennent difficiles à voir, et cinq ou six sapins plantés sur la piste se cachent dans le nuage. On entend le souffle des canons.
 - **Le biathlète** (« Martin Fourcade ! », vers 615 m depuis la V4.1, dans le long secteur vide, avant l'entrée du futur passage secret) :
   en combinaison noire et jaune, carabine dans le dos, il remonte la piste à contresens en pas de patineur (11 km/h).
