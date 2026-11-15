@@ -148,7 +148,7 @@
         if (dansUnChamp(S.y + devant) || dansUnChamp(S.y)) vVoulue = 42;
         if (G.ecole && S.y > G.ecole.E.depart && S.y < G.ecole.E.debut + 60) vVoulue = 35;
         if (G.biathlete && S.bia.y > S.y - 2 && S.bia.y - S.y < 60) vVoulue = 45;
-        if (G.lhuillier && S.y > G.lhuillier.L.depart && S.y < G.lhuillier.L.fin + 5) vVoulue = 38;
+        if (G.lhuillier && S.y > G.lhuillier.L.depart && S.y < G.lhuillier.L.fin + 5) vVoulue = 35;
         if (P.neigeLourde && S.y > P.neigeLourde.debut - 30) vVoulue = 40;
         if (virageDevant(S.y, 35) > 10) vVoulue = Math.min(vVoulue, 50);
         if (meilleureNote > 20) vVoulue = Math.min(vVoulue, 35);

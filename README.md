@@ -27,6 +27,8 @@ Nouveautés de la V3 :
 - **Choix des skis** juste avant la course : « Les Tante Rhéa » (75 km/h, chasse-neige jusqu'à 5 km/h, virages +30 %),
   « Les Madame Bec » (réglages de la V2, présélectionnée) et « Les Neige d'en Haut » (100 km/h, 15 km/h, virages −20 %).
   « Rejouer » repart avec la même paire ; la paire du record s'affiche dans le classement.
+- **Quel départ !** : appuyer vers le bas pile au « Partez ! » (entre 0,15 s avant et 0,2 s après) fait partir à 28 km/h
+  au lieu de 8 km/h, avec une bannière verte « Quel départ ! ». Pas de bonus avec « Les Tante Rhéa ».
 - **École de ski** (« Le moniteur de ski ! », vers 815 m) : un moniteur en rouge suivi de 6 enfants descend en
   zigzag d'un bord à l'autre à 8 km/h ; toucher l’un des 7 skieurs (zone de contact un peu plus large que le dessin) fait tomber.
 - **Champs de bosses en passages** : rangées serrées avec une seule ouverture qui change de côté à chaque rangée,

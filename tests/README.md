@@ -12,6 +12,7 @@ le jeu n'en a pas besoin pour fonctionner, et les joueurs ne les voient jamais.
 | `2-champs-de-bosses.spec.js` | Pour chaque champ de bosses de `js/piste.js` : le bon **nombre** de bosses, le même nombre dans chaque **couloir**, jamais deux bosses plus proches que **`ecartMin`**, et **aucune ligne droite libre** pour traverser le champ sans toucher de bosse. |
 | `3-descente-automatique.spec.js` | Un **pilote automatique** fait une descente complète avec chacune des trois paires de skis : il doit arriver en bas sans tomber, en moins de 2 minutes, avec les deux temps intermédiaires et l'écran des résultats. |
 | `4-sapins-canons.spec.js` | Les **sapins cachés dans le nuage des canons à neige** : le bon nombre (5 ou 6), tous sur la piste dans la bonne zone, assez espacés pour passer entre eux, les mêmes à chaque partie, et foncer dessus fait tomber. |
+| `5-bon-depart.spec.js` | Le **bon départ** : appuyer vers le bas pile au « Partez ! » affiche « Quel départ ! » et donne plus de vitesse ; trop tôt, trop tard ou avec « Les Tante Rhéa », pas de bonus. |
 
 ## Comment ça marche
 

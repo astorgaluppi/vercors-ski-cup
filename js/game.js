@@ -22,6 +22,12 @@
     brakeGripMul: 1.5,
     maxTurnRate: 4.5,          // rad/s, à très basse vitesse
     startSpeed: 8 * KMH,
+    // Évolutions Yann : « Quel départ ! » — appuyer vers le bas pile au « Partez ! » donne un bonus de vitesse au départ.
+    // La pression doit commencer entre « avant » s avant et « apres » s après le « Partez ! » (tenir la flèche
+    // enfoncée depuis avant ne compte pas). Pas de bonus avec les skis marqués sansBonDepart (Les Tante Rhéa).
+    bonDepartAvant: 0.15,      // s avant le « Partez ! »
+    bonDepartApres: 0.2,       // s après le « Partez ! »
+    bonDepartVitesse: 20 * KMH, // vitesse en plus au départ (8 km/h → 28 km/h)
     bumpRadius: 1.15,
     bumpHitRadius: 0.95,
     bumpFallAngle: 30 * DEG,
@@ -54,7 +60,7 @@
 
   // V3 : les trois paires de skis (vitesse max en schuss, vitesse min en chasse-neige, adhérence dans les virages)
   const SKIS = [
-    { id: 'rhea', nom: 'Les Tante Rhéa', devise: 'rustiques mais efficaces', max: 75, min: 5, grip: 1.3,
+    { id: 'rhea', nom: 'Les Tante Rhéa', devise: 'rustiques mais efficaces', max: 75, min: 5, grip: 1.3, sansBonDepart: true,
       look: { ski: '#b5793a', skiTip: '#7a4a1e' } },
     { id: 'bec', nom: 'Les Madame Bec', devise: 'hors de prix mais plutôt polyvalents', max: 90, min: 10, grip: 1,
       look: { ski: '#e53935', skiTip: '#ffca28' } },
@@ -922,7 +928,7 @@
       x: TRACK.center(CFG.startY), y: CFG.startY, v: 0, th: 0,
       countdown: 3.6, frac: CFG.skierScreenFrac, splits: [], finalTime: null, endTimer: 0, fallT: 0, lift: 0,
       banner: null, bannerSeen: {}, splitMsg: null, particles: [], trail: [], lastTrailY: CFG.startY,
-      gateOpen: 0, announced: {}, fallReason: ''
+      gateOpen: 0, announced: {}, fallReason: '', bonDepart: false, tuckPrev: false
     });
     S.camX = S.x; S.camY = S.y - viewH() * CFG.skierScreenFrac;
     S.lastBeep = null; S.heavy = false; S.turnAmt = 0; S.schoolT = 0; S.edgeT = 0; S.edgeDir = 0; S.edgeLast = 0;
@@ -983,6 +989,18 @@
     S.t += dt;
     readInput();
 
+    // Évolutions Yann : « Quel départ ! » si on appuie vers le bas pile au « Partez ! » (pas avec Les Tante Rhéa)
+    const appui = input.tuck && !S.tuckPrev;
+    S.tuckPrev = input.tuck;
+    if (appui && !S.bonDepart && !ski.sansBonDepart && (S.mode === 'countdown' || S.mode === 'race')) {
+      const ecart = 0.6 - S.countdown; // temps depuis le « Partez ! » (négatif avant)
+      if (ecart >= -CFG.bonDepartAvant && ecart <= CFG.bonDepartApres) {
+        S.bonDepart = true;
+        if (S.mode === 'race') S.v += CFG.bonDepartVitesse; // sinon, le bonus est donné au « Partez ! »
+        showBanner('Quel départ !', 'secret');
+      }
+    }
+
     if (S.mode === 'countdown' || (S.mode === 'race' && S.countdown > 0)) {
       const cd = S.countdown - (S.mode === 'countdown' ? dt : 0);
       const n = cd > 2.6 ? 3 : cd > 1.6 ? 2 : cd > 0.6 ? 1 : 0;
@@ -994,7 +1012,7 @@
       if (S.countdown <= 0.6 && S.gateOpen === 0) S.gateOpen = 0.001;
       if (S.countdown <= 0.6) {
         S.mode = 'race';
-        S.v = CFG.startSpeed;
+        S.v = CFG.startSpeed + (S.bonDepart ? CFG.bonDepartVitesse : 0);
       }
     }
     if (S.gateOpen > 0 && S.gateOpen < 1) S.gateOpen = Math.min(1, S.gateOpen + dt * 3);
