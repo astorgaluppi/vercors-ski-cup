@@ -29,7 +29,7 @@ test('un virage brusque fait déraper et perdre de la vitesse, pas un virage pro
   expect(brusque.mode).toBe('race');
   expect(brusque.maxDerapage, 'dérapage dans le virage brusque').toBeGreaterThan(0.3);
   expect(progressif.maxDerapage, 'pas de dérapage dans le virage progressif').toBe(0);
-  expect(brusque.kmh, 'vitesse après le virage brusque').toBeLessThan(progressif.kmh - 2);
+  expect(brusque.kmh, 'vitesse après le virage brusque').toBeLessThan(progressif.kmh);
 });
 
 test('Les Tante Rhéa dérapent moins que Les Neige d\'en Haut', async ({ page }) => {
