@@ -1,4 +1,4 @@
-// Test n°5 : « Quel départ ! » — appuyer vers le bas pile au « Partez ! » donne un bonus de vitesse au départ,
+// Test n°5 : « Boulet de canon ! » — appuyer vers le bas pile au « Partez ! » donne un bonus de vitesse au départ,
 // sauf avec « Les Tante Rhéa ». Appuyer trop tôt (ou tenir la flèche depuis le début) ne donne rien.
 const { test, expect } = require('@playwright/test');
 const { ouvrirLeJeu } = require('./outils/ouvrir-le-jeu');
@@ -24,12 +24,12 @@ async function depart(page, ski, decalage) {
   }, [ski, decalage]);
 }
 
-test('appuyer pile au « Partez ! » donne « Quel départ ! » et plus de vitesse', async ({ page }) => {
+test('appuyer pile au « Partez ! » donne « Boulet de canon ! » et plus de vitesse', async ({ page }) => {
   await ouvrirLeJeu(page);
   const bon = await depart(page, 'bec', 0.05);
   const tard = await depart(page, 'bec', 0.6);
   expect(bon.bonus).toBe(true);
-  expect(bon.banniere).toBe('Quel départ !');
+  expect(bon.banniere).toBe('Boulet de canon !');
   expect(tard.bonus).toBe(false);
   expect(bon.kmh, 'vitesse avec le bon départ').toBeGreaterThan(tard.kmh + 10);
 });
@@ -48,5 +48,5 @@ test('pas de bonus avec Les Tante Rhéa', async ({ page }) => {
   await ouvrirLeJeu(page);
   const r = await depart(page, 'rhea', 0.05);
   expect(r.bonus).toBe(false);
-  expect(r.banniere).not.toBe('Quel départ !');
+  expect(r.banniere).not.toBe('Boulet de canon !');
 });

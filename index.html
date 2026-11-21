@@ -84,6 +84,10 @@
     .board .nm small { display: block; font-size: 12px; font-weight: 600; color: #5c6f8f; }
     .board .tm { font-weight: 900; font-variant-numeric: tabular-nums; }
     #screen-board .card { max-width: 380px; }
+    .legende { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 10px 0 4px; font-size: 14px; font-weight: 700; font-style: italic; color: #5c6f8f; text-align: center; }
+    .legende .ico { flex: none; font-style: normal; font-size: 20px; line-height: 1; }
+    .legende .nowrap { white-space: nowrap; }
+    .legende .ico.miroir { transform: scaleX(-1); } /* les deux skieurs se font face */
     #btn-son { position: absolute; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 6; width: 48px; height: 48px;
       border-radius: 50%; border: 0; background: rgba(27,42,68,.75); color: #fff; font-size: 22px; line-height: 48px; padding: 0; cursor: pointer; }
     #music-hint { position: absolute; right: 66px; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 6; margin: 0; padding: 6px 12px;
@@ -231,6 +235,8 @@
         <p class="big-title">Classement</p>
         <p class="sub" id="board-msg"></p>
         <ol class="board" id="board-list"></ol>
+        <!-- score gardé en souvenir, hors classement (texte fixe, rien dans Supabase) -->
+        <p class="legende" id="board-legende"><span class="ico" aria-hidden="true">⛷️</span><span>Le skieur légendaire : <span class="nowrap">Yann (1:03.3)</span></span><span class="ico miroir" aria-hidden="true">⛷️</span></p>
         <button class="btn btn-primary" data-action="play">Jouer</button>
         <button class="btn btn-link" id="board-close">Accueil</button>
       </div>
@@ -240,13 +246,13 @@
   </div>
   <div id="rotate">Tourne ton téléphone en mode portrait 📱</div>
 
-  <script src="js/config.js?v=5.0"></script>
-  <script src="js/piste.js?v=5.0"></script>
-  <script src="js/ovation.js?v=5.0"></script>
-  <script src="js/sons.js?v=5.0"></script>
-  <script src="js/famille.js?v=5.0"></script>
-  <script src="js/game.js?v=5.0"></script>
-  <script src="js/accueil.js?v=5.0"></script>
+  <script src="js/config.js?v=5.1"></script>
+  <script src="js/piste.js?v=5.1"></script>
+  <script src="js/ovation.js?v=5.1"></script>
+  <script src="js/sons.js?v=5.1"></script>
+  <script src="js/famille.js?v=5.1"></script>
+  <script src="js/game.js?v=5.1"></script>
+  <script src="js/accueil.js?v=5.1"></script>
   <script>
     (() => {
       const b = document.getElementById('btn-son');
