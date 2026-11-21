@@ -31,7 +31,7 @@
     derapageAnglePlein: 90 * DEG,  // à partir de là : dérapage maximal
     derapageVitesseMin: 25 * KMH,  // pas de dérapage plus lentement
     derapagePerte: 15 * KMH,       // perte de vitesse par seconde au dérapage maximal (Madame Bec)
-    // Évolutions Yann : « Quel départ ! » — appuyer vers le bas pile au « Partez ! » donne un bonus de vitesse au départ.
+    // Évolutions Yann : « Boulet de canon ! » — appuyer vers le bas pile au « Partez ! » donne un bonus de vitesse au départ.
     // La pression doit commencer entre « avant » s avant et « apres » s après le « Partez ! » (tenir la flèche
     // enfoncée depuis avant ne compte pas). Pas de bonus avec les skis marqués sansBonDepart (Les Tante Rhéa).
     bonDepartAvant: 0.15,      // s avant le « Partez ! »
@@ -998,7 +998,7 @@
     S.t += dt;
     readInput();
 
-    // Évolutions Yann : « Quel départ ! » si on appuie vers le bas pile au « Partez ! » (pas avec Les Tante Rhéa)
+    // Évolutions Yann : « Boulet de canon ! » si on appuie vers le bas pile au « Partez ! » (pas avec Les Tante Rhéa)
     const appui = input.tuck && !S.tuckPrev;
     S.tuckPrev = input.tuck;
     if (appui && !S.bonDepart && !ski.sansBonDepart && (S.mode === 'countdown' || S.mode === 'race')) {
@@ -1006,7 +1006,7 @@
       if (ecart >= -CFG.bonDepartAvant && ecart <= CFG.bonDepartApres) {
         S.bonDepart = true;
         if (S.mode === 'race') S.v += CFG.bonDepartVitesse; // sinon, le bonus est donné au « Partez ! »
-        showBanner('Quel départ !', 'secret');
+        showBanner('Boulet de canon !', 'secret');
       }
     }
 

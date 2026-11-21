@@ -1,5 +1,5 @@
 // Fonctionnement hors connexion : réseau d'abord, copie locale si pas de réseau.
-const CACHE = 'ptpsc-5.0'; // à changer à chaque nouvelle version
+const CACHE = 'ptpsc-5.1'; // à changer à chaque nouvelle version
 const FILES = ['./', 'index.html', 'js/config.js?v=5.0', 'js/piste.js?v=5.0', 'js/ovation.js?v=5.0', 'js/sons.js?v=5.0', 'js/famille.js?v=5.0', 'js/game.js?v=5.0', 'js/accueil.js?v=5.0', 'img/logo-titre.png', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 self.addEventListener('install', (e) => {
