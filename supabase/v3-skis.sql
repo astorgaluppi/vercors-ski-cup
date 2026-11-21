@@ -1,5 +1,13 @@
--- Pas Très Pentu Ski Cup : mise à jour V3 de la base des scores (la paire de skis du record).
--- À coller dans Supabase > SQL Editor, puis Run. Une seule fois suffit.
+-- Pas Très Pentu Ski Cup : MISE À JOUR V2 -> V3 de la base des scores (la paire de skis du record).
+--
+-- QUAND LE LANCER ?
+--   Seulement sur une base créée avant la V3 (par l'ancien scores.sql, sans colonne « ski »), pour la mettre
+--   à jour sans perdre les records. Si la base a déjà la colonne « ski », c'est déjà fait : inutile de le relancer
+--   (le relancer ne casse rien pour autant).
+--   Pour une base NEUVE, ne pas utiliser ce fichier : scores.sql crée directement la base V3 complète.
+--   Ce fichier ne crée ni les tables, ni la RLS, ni le code famille. Voir README.md dans ce dossier.
+--
+-- À coller dans Supabase > SQL Editor, puis Run.
 -- Ce script ne supprime rien : les joueurs, les records et le code famille sont conservés.
 
 alter table joueurs add column if not exists ski text

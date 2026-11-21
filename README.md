@@ -80,8 +80,9 @@ Nouveautés de la V5 :
 - `js/famille.js` : prénom, code famille, classement et podium
 - `js/accueil.js` : page d'accueil (son du vent au premier toucher, forêt de sapins dessinée en V5)
 - `img/logo-titre.png` : le logo (fond rendu transparent)
-- `supabase/scores.sql` : script à lancer une fois dans Supabase (SQL Editor) pour créer la base des scores
-- `supabase/v3-skis.sql` : mise à jour V3 de la base (enregistre la paire de skis du record), sans rien effacer
+- `supabase/README.md` : la base des scores expliquée (tables, sécurité, quel script lancer et quand)
+- `supabase/scores.sql` : installation complète de la base des scores, à jour (efface tout : base neuve seulement)
+- `supabase/v3-skis.sql` : mise à jour d'une base créée avant la V3 (paire de skis du record), sans rien effacer
 - `manifest.webmanifest`, `sw.js`, `icons/` : installation sur l'écran d'accueil et jeu hors connexion
 - `tests/`, `playwright.config.js`, `package.json`, `.github/workflows/tests.yml` : tests automatiques, lancés par GitHub
   à chaque pull request (voir `tests/README.md`) ; le jeu n'en a pas besoin pour fonctionner
