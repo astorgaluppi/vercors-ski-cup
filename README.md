@@ -27,8 +27,8 @@ Nouveautés de la V3 :
 - **Choix des skis** juste avant la course : « Les Tante Rhéa » (75 km/h, chasse-neige jusqu'à 5 km/h, virages +30 %),
   « Les Madame Bec » (réglages de la V2, présélectionnée) et « Les Neige d'en Haut » (100 km/h, 15 km/h, virages −20 %).
   « Rejouer » repart avec la même paire ; la paire du record s'affiche dans le classement.
-- **Quel départ !** : appuyer vers le bas pile au « Partez ! » (entre 0,15 s avant et 0,2 s après) fait partir à 28 km/h
-  au lieu de 8 km/h, avec une bannière verte « Quel départ ! ». Pas de bonus avec « Les Tante Rhéa ».
+- **Boulet de canon !** : appuyer vers le bas pile au « Partez ! » (entre 0,15 s avant et 0,2 s après) fait partir à 28 km/h
+  au lieu de 8 km/h, avec une bannière verte « Boulet de canon ! ». Pas de bonus avec « Les Tante Rhéa ».
 - **Dérapage** : un virage trop brusque (plus de 30° d'un coup, au-dessus de 25 km/h) fait déraper le skieur : gerbe de neige,
   bruit de dérapage et perte de vitesse (jusqu'à 15 km/h par seconde, moins avec « Les Tante Rhéa », plus avec
   « Les Neige d'en Haut »). Les belles trajectoires, en virages progressifs, vont plus vite.
