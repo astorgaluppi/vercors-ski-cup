@@ -87,7 +87,8 @@ window.PISTE_V1 = {
   // troncons : même principe que la piste (angle positif = vers la droite), en partant du bord gauche à « entree ».
   passageSecret: {
     // (V5 : zone d'entrée de 668 à 692 m, qui commence au panneau)
-    panneau: 668, entree: 668, finEntree: 692, largeur: 7, recouvrement: 2.6, ressaut: 908,
+    // largeur : zone d'entrée (7 m) ; largeurCouloir : couloir en slalom, un peu plus large (9 m au lieu de 7 m)
+    panneau: 668, entree: 668, finEntree: 692, largeur: 7, largeurCouloir: 9, recouvrement: 2.6, ressaut: 908,
     troncons: [
       { longueur: 28, angle: 0 },     // entrée, le long de la piste
       { longueur: 24, angle: -32 },

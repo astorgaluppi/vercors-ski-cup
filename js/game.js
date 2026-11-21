@@ -167,6 +167,11 @@
     };
     const ang = smooth(smooth(raw, 8), 8);
     const half = Q.largeur / 2;
+    // demi-largeur selon y : largeur d'origine dans la zone d'entrée, puis le couloir en slalom s'élargit
+    // progressivement (sur 15 m, à partir de la fin de l'entonnoir) jusqu'à « largeurCouloir »
+    const halfCouloir = (Q.largeurCouloir || Q.largeur) / 2;
+    const yW0 = Q.finEntree + 15, yW1 = yW0 + 15;
+    const halfAt = (y) => half + (halfCouloir - half) * Math.max(0, Math.min(1, (y - yW0) / (yW1 - yW0)));
     const cx = new Float32Array(n);
     // au départ, le couloir empiète un peu sur la piste (c'est là qu'on entre dans les sapins)
     cx[0] = TRACK.center(y0) - TRACK.halfW(y0) - half + Q.recouvrement;
@@ -175,7 +180,7 @@
     let y1 = y0 + total;
     for (let i = Math.round(60 / step); i < n; i++) {
       const y = y0 + i * step;
-      if (cx[i] - half / Math.cos(ang[i]) > TRACK.center(y) - TRACK.halfW(y) + 0.5) { y1 = y; break; }
+      if (cx[i] - halfAt(y) / Math.cos(ang[i]) > TRACK.center(y) - TRACK.halfW(y) + 0.5) { y1 = y; break; }
     }
     const idx = (y) => {
       const f = (y - y0) / step;
@@ -186,7 +191,7 @@
       Q, y0, y1,
       center(y) { const [i, t] = idx(y); return cx[i] + (cx[i + 1] - cx[i]) * t; },
       angle(y) { const [i, t] = idx(y); return ang[i] + (ang[i + 1] - ang[i]) * t; },
-      halfW(y) { return half / Math.cos(this.angle(y)); },
+      halfW(y) { return halfAt(y) / Math.cos(this.angle(y)); },
       // vrai si (x, y) est dans le couloir, à « pad » mètres près (pad négatif : plus à l'intérieur)
       // demi-largeur d'un côté (s = -1 : gauche, côté forêt ; 1 : droite). À l'entrée, le couloir s'évase vers la
       // gauche en entonnoir, puis se resserre jusqu'à sa largeur normale 15 m après la fin de la zone d'entrée.
